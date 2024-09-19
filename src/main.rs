@@ -52,51 +52,77 @@ fn modular_inverse(a: &i128, m: &i128) -> Option<i128> {
     Some((x % m + m) % m)
 }
 
-fn sieve_of_eratosthenes(n: usize) -> Vec<usize> {
-    let mut primes = vec![true; n + 1];
-    primes[0] = false;
-    primes[1] = false;
+fn segment_sieve(n: usize) -> Vec<usize> {
+    let segment_size = 1_000_000; // Adjust based on memory
+    let limit = (n as f64).sqrt().ceil() as usize;
 
-    for p in 2..=((n as f64).sqrt() as usize) {
-        if primes[p] {
-            for multiple in (p * p..=n).step_by(p) {
-                primes[multiple] = false;
+    // Step 1: Sieve up to sqrt(n) (only odd numbers)
+    let mut is_prime = vec![true; (limit / 2) + 1]; // +1 to handle odd indices
+    let mut primes_sqrt_n = vec![2]; // Start with 2, the only even prime
+
+    for i in 1..is_prime.len() {
+        let p = 2 * i + 1; // Convert index to odd number (2i + 1)
+        if is_prime[i] {
+            primes_sqrt_n.push(p);
+            // Mark multiples of p starting from p^2, but only odd multiples
+            for multiple in ((p * p)..=limit).step_by(2 * p) {
+                is_prime[(multiple - 1) / 2] = false; // Mark odd multiples
             }
         }
     }
 
-    primes
-        .iter()
-        .enumerate()
-        .filter(|&(_, &is_prime)| is_prime)
-        .map(|(index, _)| index)
-        .collect()
+    // Step 2: Segmented sieve for the range [sqrt(n), n]
+    let mut primes_in_range = Vec::new(); // To store primes found in segments
+    let mut low = limit + 1;
+    let mut high = std::cmp::min(low + segment_size - 1, n);
+
+    while low <= n {
+        // Boolean vector for the current segment (only odd numbers)
+        let mut is_prime_segment = vec![true; (segment_size / 2) + 1]; // +1 to handle last odd number
+
+        // Mark multiples of primes from sqrt(n) in the current segment
+        for &p in &primes_sqrt_n {
+            // Find the first multiple of p within the current segment
+            let mut start = if p * p > low {
+                p * p // Start from p^2 if it's within the segment
+            } else {
+                ((low + p - 1) / p) * p // Start from the smallest multiple of p within the segment
+            };
+
+            // Adjust start to be odd if it's even
+            if start % 2 == 0 {
+                start += p;
+            }
+
+            // Mark odd multiples of p in the segment
+            while start <= high {
+                if start % 2 == 1 {
+                    is_prime_segment[(start - low) / 2] = false;
+                }
+                start += 2 * p; // Skip even multiples
+            }
+        }
+
+        // Collect primes from the current segment
+        for i in (low..=high).step_by(2) {
+            if is_prime_segment[(i - low) / 2] {
+                primes_in_range.push(i); // Collect the prime
+            }
+        }
+
+        // Move to the next segment
+        low = high + 1;
+        high = std::cmp::min(low + segment_size - 1, n);
+    }
+
+    // Combine primes up to sqrt(n) with primes from segmented sieve
+    primes_sqrt_n.extend(primes_in_range);
+
+    primes_sqrt_n // Return all primes found up to n
 }
 
 fn main() {
-    //let ans = gcd(&40, &12);
-    //let ans1 = gcd_recursive(&40, &12);
-    //println!("Comparing GCD answers: {ans} compared to {ans1}");
-
-    //let a = 98765432123456789;
-    //let b = 12345678901234567;
-    //let (gcd, x, y) = extended_gcd(&a, &b);
-    //println!("GCD: {}, x: {}, y: {}", gcd, x, y);
-
-    //let base = 2;
-    //let exponent = 5;
-    //let modulus = 13;
-    //let result = modular_exponentiation(&base, &exponent, &modulus);
-    //println!("Modular Exponentiation Result: {}", result);
-
-    //let a = 65537;
-    //let m = 1000000000039;
-
-    //match modular_inverse(&a, &m) {
-    //    Some(inv) => println!("Modular inverse of {} modulo {} is {}", a, m, inv),
-    //    None => println!("Modular inverse does not exist"),
-    //}
-
-    let primes = sieve_of_eratosthenes(122849134);
-    println!("{:?}", primes);
+    let n = 100_000_000;
+    let primes = segment_sieve(n);
+    println!("Primes: {:?}", &primes[..10000]);
 }
