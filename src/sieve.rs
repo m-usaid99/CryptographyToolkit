@@ -1,72 +1,3 @@
-pub fn segment_sieve(n: usize) -> Vec<usize> {
-    let segment_size = 1_000_000; // Adjust based on memory
-    let limit = (n as f64).sqrt().ceil() as usize;
-
-    // Step 1: Sieve up to sqrt(n) (only odd numbers)
-    let mut is_prime = vec![true; (limit / 2) + 1]; // +1 to handle odd indices
-    let mut primes_sqrt_n = vec![2]; // Start with 2, the only even prime
-
-    for i in 1..is_prime.len() {
-        let p = 2 * i + 1; // Convert index to odd number (2i + 1)
-        if is_prime[i] {
-            primes_sqrt_n.push(p);
-            // Mark multiples of p starting from p^2, but only odd multiples
-            for multiple in ((p * p)..=limit).step_by(2 * p) {
-                is_prime[(multiple - 1) / 2] = false; // Mark odd multiples
-            }
-        }
-    }
-
-    // Step 2: Segmented sieve for the range [sqrt(n), n]
-    let mut primes_in_range = Vec::new(); // To store primes found in segments
-    let mut low = limit + 1;
-    let mut high = std::cmp::min(low + segment_size - 1, n);
-
-    while low <= n {
-        // Boolean vector for the current segment (only odd numbers)
-        let mut is_prime_segment = vec![true; (segment_size / 2) + 1]; // +1 to handle last odd number
-
-        // Mark multiples of primes from sqrt(n) in the current segment
-        for &p in &primes_sqrt_n {
-            // Find the first multiple of p within the current segment
-            let mut start = if p * p > low {
-                p * p // Start from p^2 if it's within the segment
-            } else {
-                ((low + p - 1) / p) * p // Start from the smallest multiple of p within the segment
-            };
-
-            // Adjust start to be odd if it's even
-            if start % 2 == 0 {
-                start += p;
-            }
-
-            // Mark odd multiples of p in the segment
-            while start <= high {
-                if start % 2 == 1 {
-                    is_prime_segment[(start - low) / 2] = false;
-                }
-                start += 2 * p; // Skip even multiples
-            }
-        }
-
-        // Collect primes from the current segment
-        for i in (low..=high).step_by(2) {
-            if is_prime_segment[(i - low) / 2] {
-                primes_in_range.push(i); // Collect the prime
-            }
-        }
-
-        // Move to the next segment
-        low = high + 1;
-        high = std::cmp::min(low + segment_size - 1, n);
-    }
-
-    // Combine primes up to sqrt(n) with primes from segmented sieve
-    primes_sqrt_n.extend(primes_in_range);
-
-    primes_sqrt_n // Return all primes found up to n
-}
-
 pub fn segment_sieve_wheel(n: usize) -> Vec<usize> {
     let wheel_pattern = vec![1, 7, 11, 13, 17, 19, 23, 29]; // Wheel pattern for 2, 3, 5
     let wheel_size = 30; // Product of 2, 3, 5
@@ -161,6 +92,71 @@ pub fn sieve_of_eratosthenes_bitset(n: usize) -> Vec<usize> {
         if (is_composite[num / 2 / 64] & (1 << ((num / 2) % 64))) == 0 {
             primes.push(num);
         }
+    }
+
+    primes
+}
+
+pub fn segmented_sieve_bitset(n: usize) -> Vec<usize> {
+    if n < 2 {
+        return Vec::new();
+    }
+
+    // Step 1: Use a regular sieve to precompute primes up to sqrt(n)
+    let limit = (n as f64).sqrt().ceil() as usize;
+    let mut base_primes = vec![2];
+    let base_bitset_size = (limit + 1) / 2; // Store only odd numbers
+    let mut is_base_composite = vec![0u64; (base_bitset_size + 63) / 64];
+
+    // Mark multiples of small primes in the base sieve
+    for p in (3..=limit).step_by(2) {
+        if (is_base_composite[p / 2 / 64] & (1 << ((p / 2) % 64))) == 0 {
+            // Add p to the list of base primes
+            base_primes.push(p);
+
+            // Mark multiples of p in the base sieve
+            let mut multiple = p * p;
+            while multiple <= limit {
+                is_base_composite[multiple / 2 / 64] |= 1 << ((multiple / 2) % 64);
+                multiple += 2 * p;
+            }
+        }
+    }
+
+    let segment_size = 3_000_000;
+    let mut primes = base_primes.clone();
+
+    let mut low = limit + 1;
+    let mut high = std::cmp::min(low + segment_size - 1, n);
+
+    while low <= n {
+        let mut is_composite_segment = vec![0u64; (segment_size + 1) / 2];
+        for &p in &base_primes {
+            let mut start = if p * p > low {
+                p * p
+            } else {
+                ((low + p - 1) / p) * p
+            };
+
+            if start % 2 == 0 {
+                start += p;
+            }
+
+            while start <= high {
+                if start > low {
+                    is_composite_segment[(start - low) / 2 / 64] |= 1 << ((start - low) / 2 % 64);
+                }
+                start += 2 * p;
+            }
+        }
+        for i in (low..=high).step_by(2) {
+            if (is_composite_segment[(i - low) / 2 / 64] & (1 << ((i - low) / 2 % 64))) == 0 {
+                primes.push(i);
+            }
+        }
+
+        low = high + 1;
+        high = std::cmp::min(low + segment_size - 1, n);
     }
 
     primes
