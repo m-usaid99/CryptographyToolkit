@@ -134,3 +134,34 @@ pub fn segment_sieve_wheel(n: usize) -> Vec<usize> {
     primes.extend(primes_in_range); // Combine small primes with those from the segmented sieve
     primes
 }
+
+pub fn sieve_of_eratosthenes_bitset(n: usize) -> Vec<usize> {
+    if n < 2 {
+        return Vec::new();
+    }
+    let mut primes = vec![2];
+    let bitset_size = (n + 1) / 2; // only store odd numberrs
+    let mut is_composite = vec![0u64; (bitset_size + 63) / 64];
+
+    // Step 2: Mark multiples of primes starting from 2
+    let limit = (n as f64).sqrt().ceil() as usize;
+    for p in (3..=limit).step_by(2) {
+        // If 'p' is still marked as prime (its bit is 0), mark its multiples as composite
+        if (is_composite[p / 2 / 64] & (1 << ((p / 2) % 64))) == 0 {
+            // Mark all multiples of 'p' starting from p^2
+            let mut multiple = p * p;
+            while multiple <= n {
+                is_composite[multiple / 2 / 64] |= 1 << ((multiple / 2) % 64); // Set bit (mark as composite)
+                multiple += 2 * p;
+            }
+        }
+    }
+
+    for num in (3..=n).step_by(2) {
+        if (is_composite[num / 2 / 64] & (1 << ((num / 2) % 64))) == 0 {
+            primes.push(num);
+        }
+    }
+
+    primes
+}
