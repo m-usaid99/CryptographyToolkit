@@ -1,3 +1,7 @@
+use rayon::prelude::*;
+use std::sync::Mutex;
+use std::thread; // To prevent logs from mixing up
+
 /// Implements the Segmented Sieve of Eratosthenes with Wheel Factorization (2-wheel) to find all primes up to `n`.
 /// Returns a vector of prime numbers.
 pub fn segmented_sieve_with_wheel(n: usize) -> Vec<usize> {
@@ -145,27 +149,16 @@ fn is_bit_set(bits: &Vec<u64>, index: usize) -> bool {
     bits[index / 64] & (1 << (index % 64)) != 0
 }
 
-pub fn segmented_sieve_with_bitset(n: usize) -> Vec<usize> {
+/// Parallelized segmented sieve with bitset and logging.
+pub fn parallel_segmented_sieve(n: usize) -> Vec<usize> {
     if n < 2 {
         return Vec::new();
     }
 
-    // Calculate segment size based on L1 cache (512 KB)
-    // Segment size refers to the number of odd numbers we can handle per segment
-    let l1_cache_size = 512 * 1024; // 512 KB
-    let bits_per_byte = 8;
-    let bits_per_u64 = 64;
-
-    // Segment size is in terms of odd numbers, so halve it for the number range
-    let segment_size = (l1_cache_size * bits_per_byte) / 2; // segment size in terms of odd numbers
-
-    // Initialize primes list, starting with 2
-    let mut primes = vec![2];
-
-    // Step 1: Find all primes up to sqrt(n) using a simple sieve (handle only odd numbers)
+    // Find all primes up to sqrt(n) using a simple sieve.
     let limit = (n as f64).sqrt() as usize;
-    let sieve_size = (limit / 2) + 1; // Only odd numbers up to sqrt(n)
-    let mut is_prime_small = vec![0u64; (sieve_size + bits_per_u64 - 1) / bits_per_u64]; // Bitset for small sieve
+    let sieve_size = (limit / 2) + 1; // Only odd numbers
+    let mut is_prime_small = vec![0u64; (sieve_size + 63) / 64]; // Bitset for small sieve
 
     // Simple sieve for primes up to sqrt(n)
     for i in 1..sieve_size {
@@ -178,75 +171,91 @@ pub fn segmented_sieve_with_bitset(n: usize) -> Vec<usize> {
         }
     }
 
-    // Collect primes up to sqrt(n)
+    // Collect small primes up to sqrt(n)
     let small_primes: Vec<usize> = (1..sieve_size)
         .filter(|&i| !is_bit_set(&is_prime_small, i))
         .map(|i| 2 * i + 1)
         .collect();
 
+    let mut primes = vec![2];
     primes.extend(&small_primes);
 
-    // Step 2: Segmented sieve with bitset for ranges larger than sqrt(n)
-    let mut low = limit + 1;
-    if low % 2 == 0 {
-        low += 1; // Ensure low is odd
-    }
-    let mut high = low + 2 * segment_size;
-    if high > n {
-        high = n + 1;
-    }
+    // Define segment size (based on L2 cache size)
+    let segment_size = 4 * 1024 * 1024 * 8 / 2; // 4MB cache-based segment size
 
-    while low <= n {
-        let current_size = (high - low + 1) / 2; // Only odd numbers
-        let mut is_prime_segment = vec![0u64; (current_size + bits_per_u64 - 1) / bits_per_u64]; // Bitset for the segment
+    // Mutex to synchronize logging output
+    let log_mutex = Mutex::new(());
 
-        // Mark multiples of small primes in the current segment
-        for &prime in &small_primes {
-            let mut start = if prime * prime >= low {
-                prime * prime
-            } else {
-                // Start from the first multiple of prime >= low
-                let remainder = low % prime;
-                if remainder == 0 {
-                    low
+    // Parallelize the segmented sieve using Rayon with bitset and logging.
+    let num_segments = (n - limit) / (2 * segment_size) + 1;
+    let segments: Vec<Vec<usize>> = (0..num_segments)
+        .into_par_iter()
+        .map(|segment_idx| {
+            let mut local_primes = Vec::new();
+            let low = limit + 1 + 2 * segment_idx * segment_size;
+            let mut high = low + 2 * segment_size;
+            if high > n {
+                high = n + 1;
+            }
+
+            // Get current thread ID
+            let thread_id = format!("{:?}", thread::current().id());
+            // Log the segment information
+            {
+                let _lock = log_mutex.lock().unwrap();
+                println!(
+                    "Thread {} is processing segment {}: low = {}, high = {}",
+                    thread_id, segment_idx, low, high
+                );
+            }
+
+            let current_size = (high - low + 1) / 2; // Only odd numbers
+            let mut is_prime_segment = vec![0u64; (current_size + 63) / 64]; // Bitset for the segment
+
+            // Mark multiples of small primes in the segment
+            for &prime in &small_primes {
+                let mut start = if prime * prime >= low {
+                    prime * prime
                 } else {
-                    low + (prime - remainder)
+                    let remainder = low % prime;
+                    if remainder == 0 {
+                        low
+                    } else {
+                        low + (prime - remainder)
+                    }
+                };
+
+                // Ensure start is odd
+                if start % 2 == 0 {
+                    start += prime;
                 }
-            };
 
-            // Ensure start is odd
-            if start % 2 == 0 {
-                start += prime;
-            }
-
-            for multiple in (start..high).step_by(prime * 2) {
-                let index = (multiple - low) / 2;
-                if index < current_size {
-                    set_bit(&mut is_prime_segment, index);
-                }
-            }
-        }
-
-        // Collect primes in the current segment
-        for i in 0..current_size {
-            if !is_bit_set(&is_prime_segment, i) {
-                let num = low + 2 * i;
-                if num <= n {
-                    primes.push(num);
+                for multiple in (start..high).step_by(prime * 2) {
+                    let index = (multiple - low) / 2;
+                    if index < current_size {
+                        set_bit(&mut is_prime_segment, index);
+                    }
                 }
             }
-        }
 
-        // Move to the next segment
-        low += 2 * segment_size;
-        if low % 2 == 0 {
-            low += 1;
-        }
-        high = low + 2 * segment_size;
-        if high > n {
-            high = n + 1;
-        }
-    }
+            // Collect primes in the current segment
+            for i in 0..current_size {
+                if !is_bit_set(&is_prime_segment, i) {
+                    let num = low + 2 * i;
+                    if num <= n {
+                        local_primes.push(num);
+                    }
+                }
+            }
+
+            local_primes
+        })
+        .collect();
+
+    // Flatten the results from each segment into a single vector
+    segments
+        .into_iter()
+        .for_each(|segment| primes.extend(segment));
 
     primes
 }
