@@ -16,6 +16,51 @@ fn gcd_recursive(a: &i128, b: &i128) -> i128 {
         gcd_recursive(b, &(a % b))
     }
 }
+
+pub fn binary_gcd(mut a: i128, mut b: i128) -> i128 {
+    if a == 0 {
+        return b;
+    }
+    if b == 0 {
+        return a;
+    }
+
+    let shift = (a | b).trailing_zeros();
+    a >>= a.trailing_zeros();
+
+    while b != 0 {
+        b >>= b.trailing_zeros();
+
+        if a > b {
+            std::mem::swap(&mut a, &mut b);
+        }
+
+        b -= a;
+    }
+
+    a << shift
+}
+
+fn extended_gcd(a: &i128, b: &i128) -> (i128, i128, i128) {
+    if *b == 0 {
+        return (*a, 1, 0);
+    }
+
+    let (gcd, x1, y1) = extended_gcd(b, &(*a % *b));
+    let x = y1;
+    let y = x1 - (*a / *b) * y1;
+
+    (gcd, x, y)
+}
+
+fn modular_inverse(a: &i128, m: &i128) -> Option<i128> {
+    let (gcd, x, _) = extended_gcd(a, m);
+    if gcd != 1 {
+        return None;
+    }
+    Some((x % m + m) % m)
+}
+
 pub fn modular_exponentiation(base: &i128, exponent: &i128, modulus: &i128) -> i128 {
     if *modulus == 1 {
         return 0; // Any number mod 1 is 0
@@ -51,24 +96,4 @@ pub fn modular_exponentiation(base: &i128, exponent: &i128, modulus: &i128) -> i
     }
 
     result
-}
-
-fn extended_gcd(a: &i128, b: &i128) -> (i128, i128, i128) {
-    if *b == 0 {
-        return (*a, 1, 0);
-    }
-
-    let (gcd, x1, y1) = extended_gcd(b, &(*a % *b));
-    let x = y1;
-    let y = x1 - (*a / *b) * y1;
-
-    (gcd, x, y)
-}
-
-fn modular_inverse(a: &i128, m: &i128) -> Option<i128> {
-    let (gcd, x, _) = extended_gcd(a, m);
-    if gcd != 1 {
-        return None;
-    }
-    Some((x % m + m) % m)
 }
