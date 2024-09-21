@@ -1,22 +1,3 @@
-fn gcd(a: &i128, b: &i128) -> i128 {
-    let mut a = *a;
-    let mut b = *b;
-    while b != 0 {
-        let temp = b;
-        b = a % b;
-        a = temp;
-    }
-    a
-}
-
-fn gcd_recursive(a: &i128, b: &i128) -> i128 {
-    if *b == 0 {
-        *a
-    } else {
-        gcd_recursive(b, &(a % b))
-    }
-}
-
 pub fn binary_gcd(mut a: i128, mut b: i128) -> i128 {
     if a == 0 {
         return b;
@@ -41,20 +22,54 @@ pub fn binary_gcd(mut a: i128, mut b: i128) -> i128 {
     a << shift
 }
 
-fn extended_gcd(a: &i128, b: &i128) -> (i128, i128, i128) {
-    if *b == 0 {
-        return (*a, 1, 0);
+fn extended_gcd(a: i128, b: i128) -> (i128, i128, i128) {
+    if b == 0 {
+        return (a, 1, 0);
     }
 
-    let (gcd, x1, y1) = extended_gcd(b, &(*a % *b));
+    let (gcd, x1, y1) = extended_gcd(b, a % b);
     let x = y1;
-    let y = x1 - (*a / *b) * y1;
+    let y = x1 - (a / b) * y1;
 
     (gcd, x, y)
 }
 
-fn modular_inverse(a: &i128, m: &i128) -> Option<i128> {
-    let (gcd, x, _) = extended_gcd(a, m);
+pub fn extended_binary_gcd(mut a: i128, mut b: i128) -> (i128, i128, i128) {
+    if a == 0 {
+        return (b, 0, 1);
+    }
+    if b == 0 {
+        return (a, 1, 0);
+    }
+
+    let shift = (a | b).trailing_zeros();
+
+    a >>= a.trailing_zeros();
+
+    let mut x = 1;
+    let mut y = 0;
+    let mut u = 0;
+    let mut v = 1;
+
+    while b != 0 {
+        b >>= b.trailing_zeros();
+
+        if a > b {
+            std::mem::swap(&mut a, &mut b);
+            std::mem::swap(&mut x, &mut u);
+            std::mem::swap(&mut y, &mut v);
+        }
+
+        b -= a;
+        u -= x;
+        v -= y;
+    }
+
+    (a << shift, x, y)
+}
+
+fn modular_inverse(a: i128, m: i128) -> Option<i128> {
+    let (gcd, x, _) = extended_binary_gcd(a, m);
     if gcd != 1 {
         return None;
     }
