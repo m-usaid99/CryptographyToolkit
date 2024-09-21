@@ -16,19 +16,40 @@ fn gcd_recursive(a: &i128, b: &i128) -> i128 {
         gcd_recursive(b, &(a % b))
     }
 }
+pub fn modular_exponentiation(base: &i128, exponent: &i128, modulus: &i128) -> i128 {
+    if *modulus == 1 {
+        return 0; // Any number mod 1 is 0
+    }
 
-fn modular_exponentiation(base: &i128, exponent: &i128, modulus: &i128) -> i128 {
     let mut result = 1i128;
     let mut base_mod = *base % *modulus;
+
+    // Ensure base_mod is non-negative
+    if base_mod < 0 {
+        base_mod += modulus;
+    }
+
     let mut exp = *exponent;
 
     while exp > 0 {
         if exp % 2 == 1 {
             result = (result * base_mod) % *modulus;
+
+            // Ensure result is non-negative
+            if result < 0 {
+                result += modulus;
+            }
         }
         base_mod = (base_mod * base_mod) % *modulus;
+
+        // Ensure base_mod is non-negative
+        if base_mod < 0 {
+            base_mod += modulus;
+        }
+
         exp >>= 1;
     }
+
     result
 }
 
