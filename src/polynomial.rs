@@ -1,6 +1,6 @@
 use bitvec::prelude::*;
 
-// polynomials for elements of GF(2) extension fields
+/// polynomials for elements of GF(2) extension fields, coefficients are 0, 1
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Polynomial {
     // coefficients are going to be 0,1 for binary fields
@@ -8,6 +8,8 @@ pub struct Polynomial {
 }
 
 impl Polynomial {
+    /// instantiate a polynomial using an array or a vector of 0s and 1s arranged in Big-endian
+    /// order
     pub fn new(coeffs: &[u8]) -> Self {
         let mut bits = BitVec::<u8, Lsb0>::new();
         for &coeff in coeffs.iter().rev() {
@@ -19,10 +21,12 @@ impl Polynomial {
         Polynomial { bits }
     }
 
+    // think about this and its use
     pub fn degree(&self) -> usize {
         self.bits.len().saturating_sub(1)
     }
 
+    /// adds a polynomial to itself and returns the resultant
     pub fn add(&self, other: &Polynomial) -> Polynomial {
         let mut result = self.bits.clone();
         result.resize(usize::max(self.bits.len(), other.bits.len()), false);
@@ -36,6 +40,7 @@ impl Polynomial {
         Polynomial { bits: result }
     }
 
+    // multiplies itself with another polynomial and returns the resultant
     pub fn multiply(&self, other: &Polynomial) -> Polynomial {
         let mut result_bits = BitVec::<u8, Lsb0>::new();
         result_bits.resize(self.bits.len() + other.bits.len(), false);
@@ -112,6 +117,7 @@ impl Polynomial {
         self
     }
 
+    /// Converts the polynomial into a human-readable format
     pub fn to_string(&self) -> String {
         let mut terms = Vec::new();
 
