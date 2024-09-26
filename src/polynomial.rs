@@ -1,3 +1,5 @@
+use core::fmt;
+
 use bitvec::prelude::*;
 
 /// polynomials for elements of GF(2) extension fields, coefficients are 0, 1
@@ -107,39 +109,15 @@ impl Polynomial {
         (quotient, remainder)
     }
 
-    /// Computes the Greatest Common Divisor (GCD) of two polynomials.
-    pub fn gcd(mut self, mut other: Polynomial) -> Polynomial {
-        while other.bits.iter().any(|b| *b) {
-            let (_, remainder) = self.div_rem(&other);
-            self = other;
-            other = remainder;
+    pub fn gcd(&self, other: &Polynomial) -> Polynomial {
+        let mut a = self.clone();
+        let mut b = other.clone();
+        while b.bits.iter().any(|b| *b) {
+            let (_, remainder) = a.div_rem(&b);
+            a = b;
+            b = remainder;
         }
-        self
-    }
-
-    /// Converts the polynomial into a human-readable format
-    pub fn to_string(&self) -> String {
-        let mut terms = Vec::new();
-
-        for (i, bit) in self.bits.iter().enumerate() {
-            if *bit {
-                let current_degree = i;
-                let term = match current_degree {
-                    0 => "1".to_string(),
-                    1 => "x".to_string(),
-                    _ => format!("x^{}", current_degree),
-                };
-                terms.push(term);
-            }
-        }
-
-        if terms.is_empty() {
-            "0".to_string()
-        } else {
-            // Reverse the terms to display highest degree first
-            let reversed_terms: Vec<String> = terms.into_iter().rev().collect();
-            reversed_terms.join(" + ")
-        }
+        a
     }
 
     /// Compute the modular inverse of a polynomial given a modulus
@@ -173,5 +151,130 @@ impl Polynomial {
         } else {
             None // No inverse exists
         }
+    }
+
+    fn modulo(&self, modulus: &Polynomial) -> Polynomial {
+        let mut remainder = self.bits.clone();
+        let divisor = &modulus.bits;
+
+        while remainder.len() >= divisor.len() && remainder.iter().any(|b| *b) {
+            let degree_diff = remainder.len() - divisor.len();
+
+            //XOR the shifted divisor from the remainder
+            for i in 0..divisor.len() {
+                if divisor[i] {
+                    let idx = i + degree_diff;
+                    if idx < remainder.len() {
+                        let remainder_bit = remainder[idx];
+                        remainder.set(idx, remainder_bit ^ true);
+                    }
+                }
+            }
+            while remainder.len() > 1 && !remainder.last().unwrap() {
+                remainder.pop();
+            }
+        }
+
+        Polynomial { bits: remainder }
+    }
+
+    fn x() -> Polynomial {
+        Polynomial::new(&[1, 0])
+    }
+
+    /// Raises the polynomial x to the power of 2^k modulo the given modulus polynomial.
+    fn pow2_mod(&self, k: usize, modulus: &Polynomial) -> Polynomial {
+        let mut result = self.clone(); // Start with x (the current polynomial)
+        for _ in 0..k {
+            result = result.multiply(&result); // Square the polynomial
+            result = result.modulo(modulus); // Reduce modulo f(x)
+        }
+        result
+    }
+
+    fn distinct_prime_factors(n: usize) -> Vec<usize> {
+        let mut factors = Vec::new();
+        let mut num = n;
+        if num % 2 == 0 {
+            factors.push(2);
+            while num % 2 == 0 {
+                num /= 2;
+            }
+        }
+        let mut i = 3;
+        while i * i <= num {
+            if num % i == 0 {
+                factors.push(i);
+                while num % i == 0 {
+                    num /= i;
+                }
+            }
+            i += 2;
+        }
+        if num > 2 {
+            factors.push(num);
+        }
+        factors
+    }
+
+    /// Checks if the polynomial is irreducible over GF(2) using Rabin's Test
+    pub fn is_irreducible(&self) -> bool {
+        let n = self.degree();
+        if n <= 0 {
+            return false; // Degree must be at least 1
+        }
+        if n == 1 {
+            return true; // All degree 1 polynomials are irreducible
+        }
+
+        let prime_factors = Polynomial::distinct_prime_factors(n);
+        let x = Polynomial::x();
+
+        for &p in &prime_factors {
+            let exponent = n / p;
+            let x_exp = x.pow2_mod(exponent, self);
+            let diff = x_exp.add(&x); // x^{2^{n/p}} - x == x^{2^{n/p}} + x in GF(2)
+            let gcd = self.gcd(&diff);
+            if gcd.degree() >= 1 {
+                return false; // Reducible
+            }
+        }
+
+        // Finally, check that x^{2^n} mod f(x) == x
+        let x_final = x.pow2_mod(n, self);
+        let condition = x_final.add(&x) == Polynomial::new(&[0]); // Should equal 0
+        condition
+    }
+
+    /// Converts the polynomial into a human-readable format
+    pub fn to_string(&self) -> String {
+        let mut terms = Vec::new();
+
+        for (i, bit) in self.bits.iter().enumerate() {
+            if *bit {
+                let current_degree = i;
+                let term = match current_degree {
+                    0 => "1".to_string(),
+                    1 => "x".to_string(),
+                    _ => format!("x^{}", current_degree),
+                };
+                terms.push(term);
+            }
+        }
+
+        if terms.is_empty() {
+            "0".to_string()
+        } else {
+            // Reverse the terms to display highest degree first
+            let reversed_terms: Vec<String> = terms.into_iter().rev().collect();
+            reversed_terms.join(" + ")
+        }
+    }
+}
+
+impl fmt::Display for Polynomial {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let poly_str = self.to_string();
+        write!(f, "{}", poly_str)
     }
 }
