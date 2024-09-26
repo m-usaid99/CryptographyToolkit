@@ -1,6 +1,6 @@
-use core::fmt;
-
 use bitvec::prelude::*;
+use core::fmt;
+use std::ops::{Add, AddAssign, Mul, MulAssign};
 
 /// polynomials for elements of GF(2) extension fields, coefficients are 0, 1
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -153,7 +153,7 @@ impl Polynomial {
         }
     }
 
-    fn modulo(&self, modulus: &Polynomial) -> Polynomial {
+    pub fn modulo(&self, modulus: &Polynomial) -> Polynomial {
         let mut remainder = self.bits.clone();
         let divisor = &modulus.bits;
 
@@ -276,5 +276,32 @@ impl fmt::Display for Polynomial {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let poly_str = self.to_string();
         write!(f, "{}", poly_str)
+    }
+}
+
+impl<'a, 'b> Add<&'b Polynomial> for &'a Polynomial {
+    type Output = Polynomial;
+    fn add(self, other: &'b Polynomial) -> Polynomial {
+        self.add(other)
+    }
+}
+
+impl<'a, 'b> Mul<&'b Polynomial> for &'a Polynomial {
+    type Output = Polynomial;
+
+    fn mul(self, other: &'b Polynomial) -> Polynomial {
+        self.multiply(other)
+    }
+}
+
+impl<'a> AddAssign<&'a Polynomial> for Polynomial {
+    fn add_assign(&mut self, other: &'a Polynomial) {
+        *self = self.add(other);
+    }
+}
+
+impl<'a> MulAssign<&'a Polynomial> for Polynomial {
+    fn mul_assign(&mut self, other: &'a Polynomial) {
+        *self = self.multiply(other);
     }
 }
