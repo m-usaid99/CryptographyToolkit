@@ -1,7 +1,6 @@
 // src/polynomial/utils.rs
 
 use super::Polynomial;
-use bitvec::prelude::*;
 
 impl Polynomial {
     /// Returns the degree of the polynomial.

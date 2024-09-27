@@ -1,5 +1,4 @@
 use super::Polynomial;
-use bitvec::prelude::*;
 
 impl Polynomial {
     /// Checks if the polynomial is irreducible over GF(2) using Rabin's Test
