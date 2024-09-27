@@ -11,3 +11,4 @@ target-cpu = "native"
 [dependencies]
 rayon = "1.5"
 bitvec = "1"
+rand = "0.8.5"

@@ -42,6 +42,29 @@ impl Polynomial {
         Polynomial { bits: result }
     }
 
+    /// Adds another polynomial to `self` in place.
+    pub fn add_in_place(&mut self, other: &Polynomial) {
+        // Resize `self.bits` to the maximum length of both polynomials
+        self.bits
+            .resize(usize::max(self.bits.len(), other.bits.len()), false);
+
+        // Perform XOR for addition in GF(2)
+        for i in 0..other.bits.len() {
+            let bit = self.bits[i];
+            self.bits.set(i, bit ^ other.bits[i]);
+        }
+
+        // Trim leading zeros to maintain the correct degree
+        self.trim_leading_zeros();
+    }
+
+    /// Trims leading zeros from `self.bits`
+    fn trim_leading_zeros(&mut self) {
+        while self.bits.len() > 1 && !self.bits.last().unwrap() {
+            self.bits.pop();
+        }
+    }
+
     // multiplies itself with another polynomial and returns the resultant
     pub fn multiply(&self, other: &Polynomial) -> Polynomial {
         let mut result_bits = BitVec::<u8, Lsb0>::new();
@@ -67,6 +90,50 @@ impl Polynomial {
         }
 
         Polynomial { bits: result_bits }
+    }
+
+    /// Multiplies `self` with another polynomial in place.
+    pub fn multiply_in_place(&mut self, other: &Polynomial) {
+        let mut result_bits = BitVec::<u8, Lsb0>::new();
+        result_bits.resize(self.bits.len() + other.bits.len(), false);
+
+        for i in 0..self.bits.len() {
+            if self.bits[i] {
+                for j in 0..other.bits.len() {
+                    if other.bits[j] {
+                        let idx = i + j;
+                        // Ensure the result_bits can accommodate the index
+                        if idx >= result_bits.len() {
+                            result_bits.resize(idx + 1, false);
+                        }
+                        // Perform XOR for addition in GF(2)
+                        let bit = result_bits[idx];
+                        result_bits.set(idx, bit ^ true);
+                    }
+                }
+            }
+        }
+
+        // Trim leading zeros to maintain the correct degree
+        while result_bits.len() > 1 && !result_bits.last().unwrap() {
+            result_bits.pop();
+        }
+
+        // Update `self.bits` with the result
+        self.bits = result_bits;
+    }
+
+    pub fn square(&self) -> Polynomial {
+        let mut squared_bits = BitVec::<u8, Lsb0>::with_capacity(self.bits.len() * 2);
+        for bit in self.bits.iter() {
+            squared_bits.push(*bit);
+            squared_bits.push(false); // Insert a zero between bits
+        }
+        // Trim leading zeros
+        while squared_bits.len() > 1 && !squared_bits.last().unwrap() {
+            squared_bits.pop();
+        }
+        Polynomial { bits: squared_bits }
     }
 
     /// Divides self by other, returning the quotient and remainder.
@@ -186,8 +253,7 @@ impl Polynomial {
     fn pow2_mod(&self, k: usize, modulus: &Polynomial) -> Polynomial {
         let mut result = self.clone(); // Start with x (the current polynomial)
         for _ in 0..k {
-            result = result.multiply(&result); // Square the polynomial
-            result = result.modulo(modulus); // Reduce modulo f(x)
+            result = result.square().modulo(modulus); // Square the polynomial
         }
         result
     }

@@ -1,5 +1,6 @@
 use crate::polynomial::Polynomial;
 use core::fmt;
+use rand::Rng;
 
 #[derive(Debug)]
 pub enum FiniteFieldError {
@@ -37,6 +38,18 @@ impl FiniteField {
         }
         Ok(FiniteField { n, modulus })
     }
+
+    //pub fn irreducible_element(degree: usize) -> Option<Polynomial> {
+    //    let mut rng = rand::thread_rng();
+    //    if degree < 1 {
+    //        return None;
+    //    }
+    //
+    //    loop {
+    //        let mut coeffs = vec![0u8; degree + 1];
+    //        coeffs[0] = 1;
+    //    }
+    //}
 
     /// Adds two field elements together
     ///

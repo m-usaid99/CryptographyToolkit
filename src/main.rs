@@ -3,6 +3,12 @@ mod polynomial;
 
 use crate::finite_field::FiniteField;
 
+// TODO: - Add add_in_place, and multiply_in_place for Polynomial
+//       - For Finite Field:
+//          - See how to generate an irreducable poly, given a degree
+//          - implement method to generate random poly (random finite field element)
+//          - implement method to generate iterable list of polynomials (this is going to be tough)
+
 fn main() {
     let start = std::time::Instant::now();
 
