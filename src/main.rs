@@ -4,28 +4,30 @@ mod polynomial;
 use finite_field::FiniteField;
 use polynomial::Polynomial;
 
-// TODO: - Add add_in_place, and multiply_in_place for Polynomial
-//       - For Finite Field:
-//          - See how to generate an irreducable poly, given a degree
-//          - implement method to generate random poly (random finite field element)
-//          - implement method to generate iterable list of polynomials (this is going to be tough)
+// TODO:    - For Finite Field:
+//              - See how to generate an irreducable poly, given a degree
+//              - implement method to generate random poly (random finite field element)
+//              - implement method to generate iterable list of polynomials (this is going to be tough)
 
 fn main() {
     let start = std::time::Instant::now();
 
-    // Define the modulus polynomial for GF(2^3): x^3 + x + 1
-    let modulus_coeffs = vec![1, 0, 1, 1]; // Big-Endian: x^3 + x + 1
-    let modulus = Polynomial::new(&modulus_coeffs);
-    println!("Modulus: {}", modulus);
-    println!("Is modulus Irreducible?: {}", modulus.is_irreducible());
+    // define a modulus
+    let modulus = Polynomial::new(&[1, 0, 1, 1]);
+    // Define a polynomial to invert (x^2 + x)
+    let poly = Polynomial::new(&[0, 1, 1, 0]); // Represents x^2 + x
 
-    let monic = Polynomial::irreducible_trinomial(3);
-    match monic {
-        None => println!("Failed to find monic for provided degree"),
-        Some(monic) => println!("Irreducible Monic found:: {}", monic),
-    };
-    let field = FiniteField::new(3, &modulus_coeffs).expect("Failed to create FiniteField");
-    println!("{}", field);
+    if let Some(inv) = poly.inverse(&modulus) {
+        println!("Inverse of {} mod {} is {}", poly, modulus, inv);
+
+        // Verify that (poly * inv) mod modulus == 1
+        let product = poly.multiply(&inv).modulo(&modulus);
+        println!("Verification: (poly * inv) mod modulus = {}", product);
+
+        assert_eq!(product, Polynomial::new(&[1])); // Should be 1
+    } else {
+        println!("No inverse exists for {} mod {}", poly, modulus);
+    }
     let duration = start.elapsed();
     println!("Time Taken: {:?}", duration);
 }

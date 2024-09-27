@@ -66,40 +66,62 @@ impl Polynomial {
 
     /// Adds another polynomial to `self` in place.
     pub fn add_in_place(&mut self, other: &Polynomial) {
-        // Resize `self.bits` to the maximum length of both polynomials
-        self.bits
-            .resize(usize::max(self.bits.len(), other.bits.len()), false);
+        let max_len = usize::max(self.bits.len(), other.bits.len());
 
-        // Perform XOR for addition in GF(2)
-        for i in 0..other.bits.len() {
-            let bit = self.bits[i];
-            self.bits.set(i, bit ^ other.bits[i]);
+        let self_len = self.bits.len();
+        let other_len = other.bits.len();
+
+        // Resize `self.bits` to the maximum length
+        self.bits.resize(max_len, false);
+
+        // Create a new BitVec to hold the result
+        let mut result_bits = BitVec::<u8, Msb0>::with_capacity(max_len);
+
+        // Iterate over the bits from most significant to least significant
+        for i in 0..max_len {
+            let self_idx = if i >= max_len - self_len {
+                Some(i - (max_len - self_len))
+            } else {
+                None
+            };
+
+            let other_idx = if i >= max_len - other_len {
+                Some(i - (max_len - other_len))
+            } else {
+                None
+            };
+
+            let self_bit = self_idx
+                .and_then(|idx| self.bits.get(idx))
+                .map(|b| *b)
+                .unwrap_or(false);
+            let other_bit = other_idx
+                .and_then(|idx| other.bits.get(idx))
+                .map(|b| *b)
+                .unwrap_or(false);
+
+            result_bits.push(self_bit ^ other_bit);
         }
 
-        // Trim leading zeros to maintain the correct degree
-        self.trim_leading_zeros();
-    }
+        // Update self.bits with the result
+        self.bits = result_bits;
 
-    /// Trims leading zeros from `self.bits`
-    fn trim_leading_zeros(&mut self) {
-        while self.bits.len() > 1 && !self.bits.last().unwrap() {
-            self.bits.pop();
+        // Trim leading zeros
+        while self.bits.len() > 1 && !self.bits.first().unwrap() {
+            self.bits.remove(0);
         }
     }
 
     // multiplies itself with another polynomial and returns the resultant
     pub fn multiply(&self, other: &Polynomial) -> Polynomial {
-        let mut result_bits = BitVec::<u8, Msb0>::new();
-        result_bits.resize(self.bits.len() + other.bits.len(), false);
+        let result_len = self.bits.len() + other.bits.len() - 1;
+        let mut result_bits = BitVec::<u8, Msb0>::repeat(false, result_len);
 
         for i in 0..self.bits.len() {
             if self.bits[i] {
                 for j in 0..other.bits.len() {
                     if other.bits[j] {
                         let idx = i + j;
-                        if idx >= result_bits.len() {
-                            result_bits.resize(idx + 1, false);
-                        }
                         let bit = result_bits[idx];
                         result_bits.set(idx, bit ^ true);
                     }
@@ -107,8 +129,9 @@ impl Polynomial {
             }
         }
 
-        while result_bits.len() > 1 && !result_bits.last().unwrap() {
-            result_bits.pop();
+        // Trim leading zeros
+        while result_bits.len() > 1 && !result_bits.first().unwrap() {
+            result_bits.remove(0);
         }
 
         Polynomial { bits: result_bits }
@@ -116,32 +139,31 @@ impl Polynomial {
 
     /// Multiplies `self` with another polynomial in place.
     pub fn multiply_in_place(&mut self, other: &Polynomial) {
-        let mut result_bits = BitVec::<u8, Msb0>::new();
-        result_bits.resize(self.bits.len() + other.bits.len(), false);
+        let self_len = self.bits.len();
+        let other_len = other.bits.len();
+        let result_len = self_len + other_len - 1;
+        let mut result_bits = bitvec![u8, Msb0; 0; result_len];
 
-        for i in 0..self.bits.len() {
+        for i in 0..self_len {
             if self.bits[i] {
-                for j in 0..other.bits.len() {
+                for j in 0..other_len {
                     if other.bits[j] {
                         let idx = i + j;
-                        // Ensure the result_bits can accommodate the index
-                        if idx >= result_bits.len() {
-                            result_bits.resize(idx + 1, false);
-                        }
-                        // Perform XOR for addition in GF(2)
-                        let bit = result_bits[idx];
-                        result_bits.set(idx, bit ^ true);
+
+                        // Perform XOR
+                        let result_bit = result_bits[idx];
+                        result_bits.set(idx, result_bit ^ true);
                     }
                 }
             }
         }
 
-        // Trim leading zeros to maintain the correct degree
-        while result_bits.len() > 1 && !result_bits.last().unwrap() {
-            result_bits.pop();
+        // Trim leading zeros
+        while result_bits.len() > 1 && !result_bits.first().unwrap() {
+            result_bits.remove(0);
         }
 
-        // Update `self.bits` with the result
+        // Update self.bits
         self.bits = result_bits;
     }
 
@@ -168,44 +190,63 @@ impl Polynomial {
 
     /// Divides self by other, returning the quotient and remainder.
     pub fn div_rem(&self, other: &Polynomial) -> (Polynomial, Polynomial) {
-        let mut dividend = self.bits.clone();
-        let divisor = &other.bits;
-        let mut quotient_bits = BitVec::<u8, Msb0>::new();
+        // Clone the dividend and divisor
+        let mut dividend = self.clone();
+        let divisor = other.clone();
 
-        while dividend.len() >= divisor.len() && dividend.iter().any(|b| *b) {
-            let degree_diff = dividend.len() - divisor.len();
+        // Handle division by zero
+        if divisor.is_zero() {
+            panic!("Cannot divide by zero polynomial");
+        }
 
-            // XOR the shifted divisor from the dividend
-            for i in 0..divisor.len() {
-                if divisor[i] {
-                    let idx = i + degree_diff;
-                    if idx < dividend.len() {
-                        let var_name = dividend[idx];
-                        dividend.set(idx, var_name ^ true);
-                    }
-                }
-            }
+        // Calculate the maximum degree difference
+        let max_diff = if dividend.degree() >= divisor.degree() {
+            dividend.degree() - divisor.degree()
+        } else {
+            0
+        };
 
-            // Record the term in the quotient
-            if degree_diff >= quotient_bits.len() {
-                quotient_bits.resize(degree_diff + 1, false);
-            }
-            quotient_bits.set(degree_diff, true);
+        // Initialize quotient_bits with all bits set to false
+        let mut quotient_bits = BitVec::<u8, Msb0>::repeat(false, max_diff + 1);
 
-            // Remove leading zeros from dividend
-            while dividend.len() > 1 && !dividend.last().unwrap() {
-                dividend.pop();
+        // Loop until the dividend's degree is less than the divisor's degree
+        while dividend.degree() >= divisor.degree() && !dividend.is_zero() {
+            let degree_diff = dividend.degree() - divisor.degree();
+
+            // Set the corresponding bit in the quotient
+            // In Msb0, the highest degree bit is at index 0
+            let quotient_idx = max_diff - degree_diff;
+            quotient_bits.set(quotient_idx, true);
+
+            // Shift the divisor left by degree_diff
+            let shifted_divisor = divisor.shift_left(degree_diff);
+
+            // Subtract (XOR in GF(2))
+            dividend = dividend.add(&shifted_divisor);
+
+            // Trim leading zeros to update the dividend's degree
+            while dividend.bits.len() > 1 && !dividend.bits.first().unwrap() {
+                dividend.bits.remove(0);
             }
         }
 
+        // Create the quotient Polynomial
         let quotient = Polynomial {
             bits: quotient_bits,
         };
-        let remainder = Polynomial { bits: dividend };
+
+        // The remainder is the current dividend
+        let remainder = dividend;
 
         (quotient, remainder)
     }
 
+    /// Creates a polynomial representing a single term x^degree
+    fn single_term(degree: usize) -> Polynomial {
+        let mut bits = BitVec::<u8, Msb0>::repeat(false, degree + 1);
+        bits.set(0, true); // Set the bit corresponding to x^degree
+        Polynomial { bits }
+    }
     pub fn gcd(&self, other: &Polynomial) -> Polynomial {
         let mut a = self.clone();
         let mut b = other.clone();
@@ -219,32 +260,57 @@ impl Polynomial {
 
     /// Compute the modular inverse of a polynomial given a modulus
     pub fn inverse(&self, modulus: &Polynomial) -> Option<Polynomial> {
-        // Initialize r0 = modulus, r1 = self
-        let mut r0 = modulus.clone();
-        let mut r1 = self.clone();
+        // Clone the initial polynomials
+        let mut r0 = self.clone(); // Initialize r0 with 'self'
+        let mut r1 = modulus.clone(); // Initialize r1 with 'modulus'
 
-        // Initialize s0 = 0, s1 = 1
-        let mut s0 = Polynomial::new(&[0]); // Represents 0
-        let mut s1 = Polynomial::new(&[1]); // Represents 1
+        // Initialize s0 and s1 as per standard EEA
+        let mut s0 = Polynomial::new(&[1]); // Represents 1
+        let mut s1 = Polynomial::new(&[0]); // Represents 0
+
+        // Debugging: Initial state
+        println!("Initial State:");
+        println!("r0: {}", r0);
+        println!("r1: {}", r1);
+        println!("s0: {}", s0);
+        println!("s1: {}", s1);
+        println!("-----------------------------------");
 
         // Extended Euclidean Algorithm loop
-        while r1.bits.iter().any(|b| *b) {
-            let (q, _) = r0.div_rem(&r1); // Obtain quotient q
+        while !r1.is_zero() {
+            // Perform division: r0 = q * r1 + remainder
+            let (q, r) = r0.div_rem(&r1);
+            println!("Quotient: {}", q);
+            println!("Remainder: {}", r);
 
-            // Compute r_new = r0 + q * r1 (since subtraction is XOR in GF(2))
-            let r_new = r0.add(&q.multiply(&r1));
+            // Update r0 and r1
             r0 = r1;
-            r1 = r_new;
+            r1 = r;
 
-            // Compute s_new = s0 + q * s1
-            let s_new = s0.add(&q.multiply(&s1));
+            // Update s_new = s0 + q * s1
+            let s_new = s0.add(&q.multiply(&s1)).modulo(modulus);
             s0 = s1;
             s1 = s_new;
+
+            // Debugging: State after each iteration
+            println!("After Iteration:");
+            println!("r0: {}", r0);
+            println!("r1: {}", r1);
+            println!("s0: {}", s0);
+            println!("s1: {}", s1);
+            println!("-----------------------------------");
+
+            // Safety Check: Prevent infinite loops
+            if r1.degree() > r0.degree() {
+                println!("Detected non-reducing r1. Breaking to prevent infinite loop.");
+                break;
+            }
         }
 
-        // If r0 is 1, then inverse exists and is s0
+        // Final check: If r0 is 1, inverse exists
         if r0.bits.len() == 1 && r0.bits[0] {
-            Some(s0)
+            // Ensure the inverse is reduced modulo the modulus
+            Some(s0.modulo(modulus))
         } else {
             None // No inverse exists
         }
