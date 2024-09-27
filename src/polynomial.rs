@@ -241,12 +241,6 @@ impl Polynomial {
         (quotient, remainder)
     }
 
-    /// Creates a polynomial representing a single term x^degree
-    fn single_term(degree: usize) -> Polynomial {
-        let mut bits = BitVec::<u8, Msb0>::repeat(false, degree + 1);
-        bits.set(0, true); // Set the bit corresponding to x^degree
-        Polynomial { bits }
-    }
     pub fn gcd(&self, other: &Polynomial) -> Polynomial {
         let mut a = self.clone();
         let mut b = other.clone();
@@ -268,14 +262,6 @@ impl Polynomial {
         let mut s0 = Polynomial::new(&[1]); // Represents 1
         let mut s1 = Polynomial::new(&[0]); // Represents 0
 
-        // Debugging: Initial state
-        println!("Initial State:");
-        println!("r0: {}", r0);
-        println!("r1: {}", r1);
-        println!("s0: {}", s0);
-        println!("s1: {}", s1);
-        println!("-----------------------------------");
-
         // Extended Euclidean Algorithm loop
         while !r1.is_zero() {
             // Perform division: r0 = q * r1 + remainder
@@ -291,14 +277,6 @@ impl Polynomial {
             let s_new = s0.add(&q.multiply(&s1)).modulo(modulus);
             s0 = s1;
             s1 = s_new;
-
-            // Debugging: State after each iteration
-            println!("After Iteration:");
-            println!("r0: {}", r0);
-            println!("r1: {}", r1);
-            println!("s0: {}", s0);
-            println!("s1: {}", s1);
-            println!("-----------------------------------");
 
             // Safety Check: Prevent infinite loops
             if r1.degree() > r0.degree() {
