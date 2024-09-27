@@ -114,6 +114,10 @@ impl FiniteField {
 
 impl fmt::Display for FiniteField {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "GF(2^{}) with modulus {}", self.n, self.modulus)
+        write!(
+            f,
+            "Galois field of size 2^{} with modulus {}",
+            self.n, self.modulus
+        )
     }
 }

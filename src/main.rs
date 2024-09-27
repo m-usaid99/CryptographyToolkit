@@ -1,7 +1,7 @@
 mod finite_field;
 mod polynomial;
 
-use finite_field::FiniteField;
+use finite_field::{FiniteField, FiniteFieldError};
 use polynomial::Polynomial;
 
 // TODO:    - For Finite Field:
@@ -13,21 +13,14 @@ fn main() {
     let start = std::time::Instant::now();
 
     // define a modulus
-    let modulus = Polynomial::new(&[1, 0, 1, 1]);
-    // Define a polynomial to invert (x^2 + x)
-    let poly = Polynomial::new(&[0, 1, 1, 0]); // Represents x^2 + x
+    let modulus = [1, 0, 1, 1];
 
-    if let Some(inv) = poly.inverse(&modulus) {
-        println!("Inverse of {} mod {} is {}", poly, modulus, inv);
-
-        // Verify that (poly * inv) mod modulus == 1
-        let product = poly.multiply(&inv).modulo(&modulus);
-        println!("Verification: (poly * inv) mod modulus = {}", product);
-
-        assert_eq!(product, Polynomial::new(&[1])); // Should be 1
-    } else {
-        println!("No inverse exists for {} mod {}", poly, modulus);
+    let f = FiniteField::new(3, &modulus);
+    match f {
+        Ok(finite_field) => println!("{} created.", finite_field),
+        Err(err) => println!("{:?}", err),
     }
+
     let duration = start.elapsed();
     println!("Time Taken: {:?}", duration);
 }
