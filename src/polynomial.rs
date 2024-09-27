@@ -6,19 +6,20 @@ use std::ops::{Add, AddAssign, Mul, MulAssign};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Polynomial {
     // coefficients are going to be 0,1 for binary fields
-    bits: BitVec<u8, Lsb0>,
+    bits: BitVec<u8, Msb0>,
 }
 
 impl Polynomial {
     /// instantiate a polynomial using an array or a vector of 0s and 1s arranged in Big-endian
     /// order
     pub fn new(coeffs: &[u8]) -> Self {
-        let mut bits = BitVec::<u8, Lsb0>::new();
-        for &coeff in coeffs.iter().rev() {
+        let mut bits = BitVec::<u8, Msb0>::new();
+        for &coeff in coeffs.iter() {
             bits.push(coeff == 1);
         }
-        while bits.len() > 1 && !bits.last().unwrap() {
-            bits.pop();
+        // Trim leading zeros from the beginning
+        while bits.len() > 1 && !bits.first().unwrap() {
+            bits.remove(0);
         }
         Polynomial { bits }
     }
@@ -28,18 +29,39 @@ impl Polynomial {
         self.bits.len().saturating_sub(1)
     }
 
-    /// adds a polynomial to itself and returns the resultant
+    pub fn is_zero(&self) -> bool {
+        self.bits.iter().all(|b| !b)
+    }
+
     pub fn add(&self, other: &Polynomial) -> Polynomial {
-        let mut result = self.bits.clone();
-        result.resize(usize::max(self.bits.len(), other.bits.len()), false);
-        for i in 0..other.bits.len() {
-            let bit = result[i];
-            result.set(i, bit ^ other.bits[i]);
+        let max_len = usize::max(self.bits.len(), other.bits.len());
+        let mut result_bits = BitVec::<u8, Msb0>::with_capacity(max_len);
+
+        let self_offset = max_len - self.bits.len();
+        let other_offset = max_len - other.bits.len();
+
+        for i in 0..max_len {
+            let self_bit = if i >= self_offset {
+                self.bits[i - self_offset]
+            } else {
+                false
+            };
+
+            let other_bit = if i >= other_offset {
+                other.bits[i - other_offset]
+            } else {
+                false
+            };
+
+            result_bits.push(self_bit ^ other_bit);
         }
-        while result.len() > 1 && !result.last().unwrap() {
-            result.pop();
+
+        // Trim leading zeros
+        while result_bits.len() > 1 && !result_bits.first().unwrap() {
+            result_bits.remove(0);
         }
-        Polynomial { bits: result }
+
+        Polynomial { bits: result_bits }
     }
 
     /// Adds another polynomial to `self` in place.
@@ -67,7 +89,7 @@ impl Polynomial {
 
     // multiplies itself with another polynomial and returns the resultant
     pub fn multiply(&self, other: &Polynomial) -> Polynomial {
-        let mut result_bits = BitVec::<u8, Lsb0>::new();
+        let mut result_bits = BitVec::<u8, Msb0>::new();
         result_bits.resize(self.bits.len() + other.bits.len(), false);
 
         for i in 0..self.bits.len() {
@@ -94,7 +116,7 @@ impl Polynomial {
 
     /// Multiplies `self` with another polynomial in place.
     pub fn multiply_in_place(&mut self, other: &Polynomial) {
-        let mut result_bits = BitVec::<u8, Lsb0>::new();
+        let mut result_bits = BitVec::<u8, Msb0>::new();
         result_bits.resize(self.bits.len() + other.bits.len(), false);
 
         for i in 0..self.bits.len() {
@@ -124,15 +146,23 @@ impl Polynomial {
     }
 
     pub fn square(&self) -> Polynomial {
-        let mut squared_bits = BitVec::<u8, Lsb0>::with_capacity(self.bits.len() * 2);
+        let mut squared_bits = BitVec::<u8, Msb0>::with_capacity(self.bits.len() * 2);
+
         for bit in self.bits.iter() {
             squared_bits.push(*bit);
-            squared_bits.push(false); // Insert a zero between bits
+            squared_bits.push(false); // Insert a zero after each bit
         }
-        // Trim leading zeros
-        while squared_bits.len() > 1 && !squared_bits.last().unwrap() {
+
+        // Remove trailing zero if added extra
+        if squared_bits.len() > 0 && !squared_bits.last().unwrap() {
             squared_bits.pop();
         }
+
+        // Trim leading zeros
+        while squared_bits.len() > 1 && !squared_bits.first().unwrap() {
+            squared_bits.remove(0);
+        }
+
         Polynomial { bits: squared_bits }
     }
 
@@ -140,7 +170,7 @@ impl Polynomial {
     pub fn div_rem(&self, other: &Polynomial) -> (Polynomial, Polynomial) {
         let mut dividend = self.bits.clone();
         let divisor = &other.bits;
-        let mut quotient_bits = BitVec::<u8, Lsb0>::new();
+        let mut quotient_bits = BitVec::<u8, Msb0>::new();
 
         while dividend.len() >= divisor.len() && dividend.iter().any(|b| *b) {
             let degree_diff = dividend.len() - divisor.len();
@@ -179,8 +209,8 @@ impl Polynomial {
     pub fn gcd(&self, other: &Polynomial) -> Polynomial {
         let mut a = self.clone();
         let mut b = other.clone();
-        while b.bits.iter().any(|b| *b) {
-            let (_, remainder) = a.div_rem(&b);
+        while !b.is_zero() {
+            let remainder = a.modulo(&b);
             a = b;
             b = remainder;
         }
@@ -220,40 +250,43 @@ impl Polynomial {
         }
     }
 
+    pub fn shift_left(&self, n: usize) -> Polynomial {
+        let mut shifted_bits = self.bits.clone();
+
+        for _ in 0..n {
+            shifted_bits.push(false); // Append zeros at the end
+        }
+
+        Polynomial { bits: shifted_bits }
+    }
+
     pub fn modulo(&self, modulus: &Polynomial) -> Polynomial {
-        let mut remainder = self.bits.clone();
-        let divisor = &modulus.bits;
+        let mut remainder = self.clone();
 
-        while remainder.len() >= divisor.len() && remainder.iter().any(|b| *b) {
-            let degree_diff = remainder.len() - divisor.len();
+        while remainder.degree() >= modulus.degree() && !remainder.is_zero() {
+            let degree_diff = remainder.degree() - modulus.degree();
+            let shifted_modulus = modulus.shift_left(degree_diff);
 
-            //XOR the shifted divisor from the remainder
-            for i in 0..divisor.len() {
-                if divisor[i] {
-                    let idx = i + degree_diff;
-                    if idx < remainder.len() {
-                        let remainder_bit = remainder[idx];
-                        remainder.set(idx, remainder_bit ^ true);
-                    }
-                }
-            }
-            while remainder.len() > 1 && !remainder.last().unwrap() {
-                remainder.pop();
+            // Subtract (XOR in GF(2))
+            remainder = remainder.add(&shifted_modulus);
+
+            // Trim leading zeros
+            while remainder.bits.len() > 1 && !remainder.bits.first().unwrap() {
+                remainder.bits.remove(0);
             }
         }
 
-        Polynomial { bits: remainder }
+        remainder
     }
 
     fn x() -> Polynomial {
         Polynomial::new(&[1, 0])
     }
 
-    /// Raises the polynomial x to the power of 2^k modulo the given modulus polynomial.
     fn pow2_mod(&self, k: usize, modulus: &Polynomial) -> Polynomial {
-        let mut result = self.clone(); // Start with x (the current polynomial)
+        let mut result = self.clone();
         for _ in 0..k {
-            result = result.square().modulo(modulus); // Square the polynomial
+            result = result.square().modulo(modulus);
         }
         result
     }
@@ -312,13 +345,71 @@ impl Polynomial {
         condition
     }
 
+    // generate all possible trinomials
+    pub fn generate_trinomials(degree: usize) -> Vec<Polynomial> {
+        let mut trinomials = Vec::new();
+        for k in (1..degree).rev() {
+            let mut coeffs = vec![0u8; degree + 1];
+            coeffs[degree] = 1;
+            coeffs[k] = 1;
+            coeffs[0] = 1;
+            trinomials.push(Polynomial::new(&coeffs));
+        }
+        trinomials
+    }
+
+    /// returns an irreducible trinomial if exists
+    pub fn irreducible_trinomial(degree: usize) -> Option<Polynomial> {
+        let tris = Polynomial::generate_trinomials(degree);
+        println!("{:?}", tris);
+        for trinomial in tris {
+            if trinomial.is_irreducible() {
+                return Some(trinomial);
+            }
+        }
+        None
+    }
+
+    /// enumerate all possible monics of a certain degree
+    pub fn generate_all_monics(degree: usize) -> Vec<Polynomial> {
+        let mut polynomials = Vec::new();
+        let total = 1 << degree;
+
+        for i in 0..total {
+            let mut coeffs = vec![0u8; degree + 1];
+            coeffs[degree] = 1; // ensure its a monic
+            for j in 0..degree {
+                coeffs[j] = ((i >> j) & 1) as u8;
+            }
+            polynomials.push(Polynomial::new(&coeffs));
+        }
+        polynomials
+    }
+
+    /// generate an irreducible monic of degree `n` to serve as modulus for finite field
+    pub fn irreducible_element(degree: usize) -> Option<Polynomial> {
+        // try to find irreducible trinomial
+        if let Some(tri_poly) = Polynomial::irreducible_trinomial(degree) {
+            return Some(tri_poly);
+        }
+
+        // if no irreducible trinomial, enumerate all possible monics
+        for poly in Polynomial::generate_all_monics(degree) {
+            if poly.is_irreducible() {
+                return Some(poly);
+            }
+        }
+        None
+    }
+
     /// Converts the polynomial into a human-readable format
     pub fn to_string(&self) -> String {
         let mut terms = Vec::new();
+        let degree = self.degree();
 
         for (i, bit) in self.bits.iter().enumerate() {
             if *bit {
-                let current_degree = i;
+                let current_degree = degree - i;
                 let term = match current_degree {
                     0 => "1".to_string(),
                     1 => "x".to_string(),
@@ -331,9 +422,7 @@ impl Polynomial {
         if terms.is_empty() {
             "0".to_string()
         } else {
-            // Reverse the terms to display highest degree first
-            let reversed_terms: Vec<String> = terms.into_iter().rev().collect();
-            reversed_terms.join(" + ")
+            terms.join(" + ")
         }
     }
 }
