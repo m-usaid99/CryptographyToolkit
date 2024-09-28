@@ -4,6 +4,7 @@ use rand::Rng;
 
 // TODO:
 //       - make a generator to create iterable for finite field elements
+//       - try to optimize modular exponentiation
 //       - create a list of known irreducible_polys so that there are ideal polys for common fields
 
 #[derive(Debug)]
@@ -156,8 +157,8 @@ impl FiniteField {
     /// # Returns
     ///
     /// The result of \( a^{\text{exp}} \) in the field.
-    pub fn exponentiate(&self, a: &Polynomial, exp: u64) -> Polynomial {
-        let one = Polynomial::new(&[1]);
+    pub fn mod_exp(&self, a: &Polynomial, exp: u64) -> Polynomial {
+        let one = Polynomial::one();
         let mut result = one.clone();
         let mut base = a.clone();
         let mut exponent = exp;
@@ -166,7 +167,9 @@ impl FiniteField {
             if exponent & 1 == 1 {
                 result = self.multiply(&result, &base);
             }
-            base = self.multiply(&base, &base);
+            // Use optimized squaring
+            base = base.square();
+            base = self.modulo(&base);
             exponent >>= 1;
         }
         result
