@@ -60,6 +60,15 @@ impl Polynomial {
         factors
     }
 
+    /// Returns true if the polynomial is equal to one.
+    pub fn is_one(&self) -> bool {
+        self.bits.len() == 1 && self.bits[0]
+    }
+
+    pub fn one() -> Polynomial {
+        Polynomial::new(&[1])
+    }
+
     /// enumerate all possible monics of a certain degree
     pub fn generate_all_monics(degree: usize) -> Vec<Polynomial> {
         let mut polynomials = Vec::new();

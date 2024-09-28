@@ -1,10 +1,33 @@
 use crate::polynomial::Polynomial;
 use core::fmt;
+use rand::Rng;
+
+// TODO:
+//       - make a generator to create iterable for finite field elements
+//       - create a list of known irreducible_polys so that there are ideal polys for common fields
 
 #[derive(Debug)]
 pub enum FiniteFieldError {
     NonIrreducibleModulus,
     InvalidModulusDegree,
+    UnableToGenerateModulus,
+}
+
+impl fmt::Display for FiniteFieldError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FiniteFieldError::NonIrreducibleModulus => {
+                write!(f, "The provided modulus is not irreducible.")
+            }
+            FiniteFieldError::InvalidModulusDegree => write!(
+                f,
+                "The degree of the modulus does not match the field degree."
+            ),
+            FiniteFieldError::UnableToGenerateModulus => {
+                write!(f, "Unable to generate an irreducible modulus polynomial.")
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -38,6 +61,29 @@ impl FiniteField {
         Ok(FiniteField { n, modulus })
     }
 
+    /// Creates a new FiniteField with degree `n` by automatically generating an irreducible modulus polynomial.
+    ///
+    /// # Arguments
+    ///
+    /// * `n` - The degree of the extension field.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(FiniteField)` if an irreducible modulus is successfully generated.
+    /// * `Err(FiniteFieldError)` if no irreducible modulus is found within the maximum attempts.
+    pub fn new_auto(n: usize) -> Result<FiniteField, FiniteFieldError> {
+        let max_attempts = 3000; // Adjust as needed
+        match Polynomial::irreducible_element(n, max_attempts) {
+            Some(modulus) => Ok(FiniteField { n, modulus }),
+            None => Err(FiniteFieldError::UnableToGenerateModulus),
+        }
+    }
+
+    /// Returns a reference to the modulus polynomial.
+    pub fn modulus(&self) -> &Polynomial {
+        &self.modulus
+    }
+
     /// Adds two field elements together
     ///
     /// # Arguments
@@ -48,7 +94,7 @@ impl FiniteField {
     /// # Returns
     ///
     /// The sum of `a` and `b` in the field.
-    pub fn add(&self, a: Polynomial, b: &Polynomial) -> Polynomial {
+    pub fn add(&self, a: &Polynomial, b: &Polynomial) -> Polynomial {
         a.add(b)
     }
 
@@ -76,13 +122,28 @@ impl FiniteField {
     /// # Returns
     ///
     /// `Some(inverse)` if the inverse exists, otherwise `None`.
-    pub fn inverse(&self, a: Polynomial) -> Option<Polynomial> {
+    pub fn inverse(&self, a: &Polynomial) -> Option<Polynomial> {
         a.inverse(&self.modulus)
     }
 
     /// Performs modulo reduction with the field's modulus polynomial.
     fn modulo(&self, poly: &Polynomial) -> Polynomial {
         poly.modulo(&self.modulus)
+    }
+
+    /// Generates a random element in the finite field.
+    ///
+    /// # Returns
+    ///
+    /// A random polynomial representing an element of the finite field.
+    pub fn random_element(&self) -> Polynomial {
+        let mut rng = rand::thread_rng();
+        let degree = self.n;
+        let mut coeffs = vec![];
+        for _ in 0..degree {
+            coeffs.push(rng.gen_range(0..=1));
+        }
+        Polynomial::new(&coeffs)
     }
 
     /// Raises a field element to the power `exp` using exponentiation by squaring.

@@ -80,8 +80,6 @@ impl Polynomial {
         while !r1.is_zero() {
             // Perform division: r0 = q * r1 + remainder
             let (q, r) = r0.div_rem(&r1);
-            println!("Quotient: {}", q);
-            println!("Remainder: {}", r);
 
             // Update r0 and r1
             r0 = r1;

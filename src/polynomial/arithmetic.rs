@@ -177,4 +177,20 @@ impl Polynomial {
 
         remainder
     }
+
+    /// Raises the polynomial to the power `exp` modulo `modulus`.
+    pub fn pow_mod(&self, exp: usize, modulus: &Polynomial) -> Polynomial {
+        let mut result = Polynomial::new(&[0, 1]); // Represents 1
+        let mut base = self.clone();
+        let mut exponent = exp;
+
+        while exponent > 0 {
+            if exponent % 2 == 1 {
+                result = result.multiply(&base).modulo(modulus);
+            }
+            base = base.square().modulo(modulus);
+            exponent /= 2;
+        }
+        result
+    }
 }
