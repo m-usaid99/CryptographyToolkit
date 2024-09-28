@@ -29,6 +29,11 @@ fn main() {
     } else {
         println!("a has no multiplicative inverse.");
     }
+
+    for element in field.elements_of_degree(6) {
+        println!("{}", element);
+    }
+
     let duration = start.elapsed();
     println!("Time Taken: {:?}", duration);
 }

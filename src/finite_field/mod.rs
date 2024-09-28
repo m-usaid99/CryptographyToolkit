@@ -1,35 +1,18 @@
+// src/finite_field/mod.rs
+
+use crate::finite_field::errors::FiniteFieldError;
 use crate::polynomial::Polynomial;
-use core::fmt;
 use rand::Rng;
+use std::fmt;
 
-// TODO:
-//       - make a generator to create iterable for finite field elements
-//       - try to optimize modular exponentiation
-//       - create a list of known irreducible_polys so that there are ideal polys for common fields
+mod errors;
+mod iterators;
 
-#[derive(Debug)]
-pub enum FiniteFieldError {
-    NonIrreducibleModulus,
-    InvalidModulusDegree,
-    UnableToGenerateModulus,
-}
+pub use errors::*;
+pub use iterators::*;
 
-impl fmt::Display for FiniteFieldError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            FiniteFieldError::NonIrreducibleModulus => {
-                write!(f, "The provided modulus is not irreducible.")
-            }
-            FiniteFieldError::InvalidModulusDegree => write!(
-                f,
-                "The degree of the modulus does not match the field degree."
-            ),
-            FiniteFieldError::UnableToGenerateModulus => {
-                write!(f, "Unable to generate an irreducible modulus polynomial.")
-            }
-        }
-    }
-}
+// TODO:    - create a list of known irreducible_polys so that there are ideal polys for common fields
+//          - write unit tests for each function
 
 #[derive(Debug, Clone)]
 pub struct FiniteField {
@@ -173,6 +156,46 @@ impl FiniteField {
             exponent >>= 1;
         }
         result
+    }
+
+    /// Returns an iterator over all elements of the finite field up to a given degree `max_degree`.
+    ///
+    /// # Arguments
+    ///
+    /// * `max_degree` - The maximum degree of the polynomials to generate (less than or equal to field degree).
+    ///
+    /// # Returns
+    ///
+    /// An iterator over polynomials of degrees up to `max_degree`.
+    pub fn elements_up_to_degree(
+        &self,
+        max_degree: usize,
+    ) -> FiniteFieldElementDegreeBoundedIterator {
+        if max_degree > self.n {
+            panic!("max_degree cannot exceed the field degree");
+        }
+        FiniteFieldElementDegreeBoundedIterator {
+            current: 0,
+            max: 1 << self.n,
+            degree: self.n,
+            max_degree,
+        }
+    }
+
+    /// Returns an iterator over all elements of the finite field of a specific degree `target_degree`.
+    pub fn elements_of_degree(
+        &self,
+        target_degree: usize,
+    ) -> FiniteFieldElementFixedDegreeIterator {
+        if target_degree > self.n {
+            panic!("target_degree cannot exceed the field degree");
+        }
+        FiniteFieldElementFixedDegreeIterator {
+            current: 0,
+            max: 1 << self.n,
+            degree: self.n,
+            target_degree,
+        }
     }
 }
 

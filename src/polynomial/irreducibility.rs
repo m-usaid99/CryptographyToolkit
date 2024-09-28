@@ -1,5 +1,4 @@
 use super::Polynomial;
-use bitvec::prelude::*;
 use rand::Rng;
 
 impl Polynomial {
