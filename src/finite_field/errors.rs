@@ -1,3 +1,5 @@
+// src/finite_field/errors.rs
+
 use std::fmt;
 
 #[derive(Debug)]

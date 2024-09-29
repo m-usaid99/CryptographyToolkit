@@ -1,3 +1,5 @@
+// src/finite_field/iterators.rs
+
 use crate::polynomial::Polynomial;
 
 pub struct FiniteFieldElementDegreeBoundedIterator {
