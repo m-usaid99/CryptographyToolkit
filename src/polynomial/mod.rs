@@ -15,7 +15,7 @@ pub mod utils;
 //use utils::*;
 
 /// Represents a polynomial over GF(2) with coefficients in Big-Endian (MSB first) order.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Polynomial {
     pub bits: BitVec<u8, Msb0>,
 }
