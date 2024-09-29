@@ -1,7 +1,7 @@
 mod finite_field;
 mod polynomial;
 
-use finite_field::FiniteField;
+use cryptography_toolkit::FiniteField;
 
 fn main() {
     let start = std::time::Instant::now();
@@ -30,7 +30,7 @@ fn main() {
         println!("a has no multiplicative inverse.");
     }
 
-    for element in field.elements_of_degree(6) {
+    for element in field.elements_of_degree(4) {
         println!("{}", element);
     }
 
