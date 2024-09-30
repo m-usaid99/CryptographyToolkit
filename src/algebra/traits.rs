@@ -28,11 +28,11 @@ pub trait Group: Algebra {
 
     /// Returns the inverse of an element within the group.
     fn inverse(&self, a: &Self::Element) -> Option<Self::Element>;
+
+    /// Raises an element to a non-negative integer power.
+    fn pow(&self, a: &Self::Element, exp: u128) -> Self::Element;
 }
 
 /// Trait representing a mathematical field.
 /// Combines both Ring and Group traits.
-pub trait Field: Ring + Group {
-    /// Raises an element to a non-negative integer power.
-    fn pow(&self, a: &Self::Element, exp: u128) -> Self::Element;
-}
+pub trait Field: Ring + Group {}

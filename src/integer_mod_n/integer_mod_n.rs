@@ -1,70 +1,47 @@
-// src/integer_mod_p/integer_mod_p.rs
+// src/integer_mod_n/integer_mod_n.rs
 
-use crate::algebra::traits::{Algebra, Field, Group, Ring};
+use crate::algebra::traits::{Algebra, Group, Ring};
 use num_bigint::{BigUint, ToBigUint};
 use num_traits::{One, Zero};
 use std::fmt;
 
-/// Errors related to `IntegerModP`.
+/// Errors related to `IntegerModN`.
 #[derive(Debug)]
-pub enum IntegerModPError {
-    NotPrime,
+pub enum IntegerModNError {
+    InversionFailed,
 }
 
-impl fmt::Display for IntegerModPError {
+impl fmt::Display for IntegerModNError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            IntegerModPError::NotPrime => write!(f, "The modulus `p` must be a prime number."),
-        }
-    }
-}
-
-impl std::error::Error for IntegerModPError {}
-
-/// Represents an integer modulo a prime number `p`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct IntegerModP {
-    p: BigUint, // Prime modulus
-}
-
-impl IntegerModP {
-    /// Creates a new `IntegerModP` with a given prime modulus `p`.
-    pub fn new(p: BigUint) -> Result<Self, IntegerModPError> {
-        if !Self::is_prime(&p) {
-            return Err(IntegerModPError::NotPrime);
-        }
-        Ok(IntegerModP { p })
-    }
-
-    /// Simple primality check (inefficient for large p).
-    fn is_prime(n: &BigUint) -> bool {
-        if *n < 2.to_biguint().unwrap() {
-            return false;
-        }
-        if *n == 2.to_biguint().unwrap() || *n == 3.to_biguint().unwrap() {
-            return true;
-        }
-        if n % 2.to_biguint().unwrap() == BigUint::zero() {
-            return false;
-        }
-        let sqrt_n = n.sqrt();
-        let mut i = 3.to_biguint().unwrap();
-        while &i <= &sqrt_n {
-            if n % &i == BigUint::zero() {
-                return false;
+            IntegerModNError::InversionFailed => {
+                write!(f, "Multiplicative inverse does not exist.")
             }
-            i += 2.to_biguint().unwrap();
         }
-        true
+    }
+}
+
+impl std::error::Error for IntegerModNError {}
+
+/// Represents an integer modulo a composite number `n`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IntegerModN {
+    n: BigUint, // Composite modulus
+}
+
+impl IntegerModN {
+    /// Creates a new `IntegerModN` with a given modulus `n`.
+    pub fn new(n: BigUint) -> Self {
+        IntegerModN { n }
     }
 
     /// Computes the multiplicative inverse using the Extended Euclidean Algorithm.
-    fn inverse(a: &BigUint, p: &BigUint) -> Option<BigUint> {
-        let (gcd, x, _) = Self::extended_gcd(a, p);
+    pub fn inverse(a: &BigUint, n: &BigUint) -> Option<BigUint> {
+        let (gcd, x, _) = Self::extended_gcd(a, n);
         if gcd != BigUint::one() {
             return None; // Inverse does not exist
         }
-        Some((x % p) + p)
+        Some((x % n) + n)
     }
 
     /// Extended Euclidean Algorithm.
@@ -95,23 +72,23 @@ impl IntegerModP {
         (old_r, old_s, old_t)
     }
 
-    /// Raises `base` to the power `exp` modulo `p` using exponentiation by squaring.
-    fn pow(base: &BigUint, exp: u128, p: &BigUint) -> BigUint {
-        base.modpow(&exp.to_biguint().unwrap(), p)
+    /// Raises `base` to the power `exp` modulo `n` using exponentiation by squaring.
+    pub fn pow(base: &BigUint, exp: u128, n: &BigUint) -> BigUint {
+        base.modpow(&exp.to_biguint().unwrap(), n)
     }
 }
 
-impl Algebra for IntegerModP {
+impl Algebra for IntegerModN {
     type Element = BigUint;
 }
 
-impl Ring for IntegerModP {
+impl Ring for IntegerModN {
     fn add(&self, a: &Self::Element, b: &Self::Element) -> Self::Element {
-        (a + b) % &self.p
+        (a + b) % &self.n
     }
 
     fn mul(&self, a: &Self::Element, b: &Self::Element) -> Self::Element {
-        (a * b) % &self.p
+        (a * b) % &self.n
     }
 
     fn zero(&self) -> Self::Element {
@@ -123,7 +100,7 @@ impl Ring for IntegerModP {
     }
 }
 
-impl Group for IntegerModP {
+impl Group for IntegerModN {
     fn combine(&self, a: &Self::Element, b: &Self::Element) -> Self::Element {
         self.mul(a, b)
     }
@@ -136,19 +113,17 @@ impl Group for IntegerModP {
         if a.is_zero() {
             None // Zero has no inverse
         } else {
-            Self::inverse(a, &self.p)
+            Self::inverse(a, &self.n)
         }
     }
 
     fn pow(&self, a: &Self::Element, exp: u128) -> Self::Element {
-        Self::pow(a, exp, &self.p)
+        Self::pow(a, exp, &self.n)
     }
 }
 
-impl Field for IntegerModP {}
-
-impl fmt::Display for IntegerModP {
+impl fmt::Display for IntegerModN {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Integers Modulo {} (Z_{})", self.p, self.p)
+        write!(f, "Integer Modulo {} (Z/{}Z)", self.n, self.n)
     }
 }

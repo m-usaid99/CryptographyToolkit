@@ -2,14 +2,14 @@
 
 use crate::polynomial::Polynomial;
 
-pub struct FiniteFieldElementDegreeBoundedIterator {
+pub struct BinaryExtensionFieldElementDegreeBoundedIterator {
     pub current: u128,
     pub max: u128,
     pub degree: usize,
     pub max_degree: usize,
 }
 
-impl Iterator for FiniteFieldElementDegreeBoundedIterator {
+impl Iterator for BinaryExtensionFieldElementDegreeBoundedIterator {
     type Item = Polynomial;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -30,14 +30,14 @@ impl Iterator for FiniteFieldElementDegreeBoundedIterator {
     }
 }
 
-pub struct FiniteFieldElementFixedDegreeIterator {
+pub struct BinaryExtensionFieldElementFixedDegreeIterator {
     pub current: u128,
     pub max: u128,
     pub degree: usize,
     pub target_degree: usize,
 }
 
-impl Iterator for FiniteFieldElementFixedDegreeIterator {
+impl Iterator for BinaryExtensionFieldElementFixedDegreeIterator {
     type Item = Polynomial;
 
     fn next(&mut self) -> Option<Self::Item> {

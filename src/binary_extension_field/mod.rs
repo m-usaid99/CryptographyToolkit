@@ -1,7 +1,7 @@
 // src/finite_field/mod.rs
 
 use crate::algebra::traits::{Algebra, Field, Group, Ring};
-pub use crate::finite_field::errors::FiniteFieldError;
+pub use crate::binary_extension_field::errors::BinaryExtensionFieldError;
 use crate::polynomial::Polynomial;
 use rand::Rng;
 use std::fmt;
@@ -9,19 +9,18 @@ use std::fmt;
 mod errors;
 mod iterators;
 
-use errors::*;
 pub use iterators::*;
 
 // TODO:    - create a list of known irreducible_polys so that there are ideal polys for common fields
 //          - write unit tests for each function
 
 #[derive(Debug, Clone)]
-pub struct FiniteField {
+pub struct BinaryExtensionField {
     n: usize,
     modulus: Polynomial,
 }
 
-impl FiniteField {
+impl BinaryExtensionField {
     /// Creates a new FiniteField with degree `n` and the given modulus modulus polynomial
     /// coefficients
     ///
@@ -35,15 +34,15 @@ impl FiniteField {
     ///
     /// * `Ok(FiniteField)` if the modulus is appropriate
     /// * `Err(FiniteFieldError)` if the modulus is not irreducible or degree mismatch.
-    pub fn new(n: usize, modulus_coeffs: &[u8]) -> Result<Self, FiniteFieldError> {
+    pub fn new(n: usize, modulus_coeffs: &[u8]) -> Result<Self, BinaryExtensionFieldError> {
         let modulus = Polynomial::new(modulus_coeffs);
         if modulus.degree() != n {
-            return Err(FiniteFieldError::InvalidModulusDegree);
+            return Err(BinaryExtensionFieldError::InvalidModulusDegree);
         }
         if !modulus.is_irreducible() {
-            return Err(FiniteFieldError::NonIrreducibleModulus);
+            return Err(BinaryExtensionFieldError::NonIrreducibleModulus);
         }
-        Ok(FiniteField { n, modulus })
+        Ok(BinaryExtensionField { n, modulus })
     }
 
     /// Creates a new FiniteField with degree `n` by automatically generating an irreducible modulus polynomial.
@@ -56,11 +55,11 @@ impl FiniteField {
     ///
     /// * `Ok(FiniteField)` if an irreducible modulus is successfully generated.
     /// * `Err(FiniteFieldError)` if no irreducible modulus is found within the maximum attempts.
-    pub fn new_auto(n: usize) -> Result<FiniteField, FiniteFieldError> {
+    pub fn new_auto(n: usize) -> Result<BinaryExtensionField, BinaryExtensionFieldError> {
         let max_attempts = 3000; // Adjust as needed
         match Polynomial::irreducible_element(n, max_attempts) {
-            Some(modulus) => Ok(FiniteField { n, modulus }),
-            None => Err(FiniteFieldError::UnableToGenerateModulus),
+            Some(modulus) => Ok(BinaryExtensionField { n, modulus }),
+            None => Err(BinaryExtensionFieldError::UnableToGenerateModulus),
         }
     }
 
@@ -171,11 +170,11 @@ impl FiniteField {
     pub fn elements_up_to_degree(
         &self,
         max_degree: usize,
-    ) -> FiniteFieldElementDegreeBoundedIterator {
+    ) -> BinaryExtensionFieldElementDegreeBoundedIterator {
         if max_degree > self.n {
             panic!("max_degree cannot exceed the field degree");
         }
-        FiniteFieldElementDegreeBoundedIterator {
+        BinaryExtensionFieldElementDegreeBoundedIterator {
             current: 0,
             max: 1 << self.n,
             degree: self.n,
@@ -187,11 +186,11 @@ impl FiniteField {
     pub fn elements_of_degree(
         &self,
         target_degree: usize,
-    ) -> FiniteFieldElementFixedDegreeIterator {
+    ) -> BinaryExtensionFieldElementFixedDegreeIterator {
         if target_degree > self.n {
             panic!("target_degree cannot exceed the field degree");
         }
-        FiniteFieldElementFixedDegreeIterator {
+        BinaryExtensionFieldElementFixedDegreeIterator {
             current: 0,
             max: 1 << self.n,
             degree: self.n,
@@ -200,7 +199,7 @@ impl FiniteField {
     }
 }
 
-impl fmt::Display for FiniteField {
+impl fmt::Display for BinaryExtensionField {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -210,11 +209,11 @@ impl fmt::Display for FiniteField {
     }
 }
 
-impl Algebra for FiniteField {
+impl Algebra for BinaryExtensionField {
     type Element = Polynomial;
 }
 
-impl Ring for FiniteField {
+impl Ring for BinaryExtensionField {
     fn add(&self, a: &Self::Element, b: &Self::Element) -> Self::Element {
         self.add(a, b)
     }
@@ -232,7 +231,7 @@ impl Ring for FiniteField {
     }
 }
 
-impl Group for FiniteField {
+impl Group for BinaryExtensionField {
     fn combine(&self, a: &Self::Element, b: &Self::Element) -> Self::Element {
         self.multiply(a, b)
     }
@@ -244,10 +243,10 @@ impl Group for FiniteField {
     fn inverse(&self, a: &Self::Element) -> Option<Self::Element> {
         self.inverse(a)
     }
-}
 
-impl Field for FiniteField {
     fn pow(&self, a: &Self::Element, exp: u128) -> Self::Element {
         self.mod_exp(a, exp)
     }
 }
+
+impl Field for BinaryExtensionField {}
