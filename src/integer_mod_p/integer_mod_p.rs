@@ -3,6 +3,8 @@
 use crate::algebra::traits::{Algebra, Field, Group, Ring};
 use num_bigint::{BigUint, ToBigUint};
 use num_traits::{One, Zero};
+use rand::rngs::OsRng;
+use rand::Rng;
 use std::fmt;
 
 /// Errors related to `IntegerModP`.
@@ -34,6 +36,16 @@ impl IntegerModP {
             return Err(IntegerModPError::NotPrime);
         }
         Ok(IntegerModP { p })
+    }
+
+    /// Generates a random element in the field Z/pZ.
+    pub fn random_element(&self) -> BigUint {
+        let mut rng = OsRng;
+        let bytes = self.p.to_bytes_be();
+        let mut random_bytes = vec![0u8; bytes.len()];
+        rng.fill(&mut random_bytes[..]);
+        let random_num = BigUint::from_bytes_be(&random_bytes);
+        &random_num % &self.p
     }
 
     /// Simple primality check (inefficient for large p).
@@ -149,6 +161,10 @@ impl Field for IntegerModP {}
 
 impl fmt::Display for IntegerModP {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Integers Modulo {} (Z_{})", self.p, self.p)
+        write!(
+            f,
+            "Prime field of Integers Modulo {} (Z_{})",
+            self.p, self.p
+        )
     }
 }

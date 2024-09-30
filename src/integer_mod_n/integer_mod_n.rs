@@ -3,6 +3,8 @@
 use crate::algebra::traits::{Algebra, Group, Ring};
 use num_bigint::{BigUint, ToBigUint};
 use num_traits::{One, Zero};
+use rand::rngs::OsRng;
+use rand::Rng;
 use std::fmt;
 
 /// Errors related to `IntegerModN`.
@@ -76,6 +78,41 @@ impl IntegerModN {
     pub fn pow(base: &BigUint, exp: u128, n: &BigUint) -> BigUint {
         base.modpow(&exp.to_biguint().unwrap(), n)
     }
+
+    /// Generates a random element in the multiplicative group (Z/nZ)*.
+    pub fn random_group_element(&self) -> BigUint {
+        let rng = OsRng;
+        loop {
+            let random_num = self.random_element();
+            if Self::gcd(&random_num, &self.n) == BigUint::one() {
+                return random_num;
+            }
+            // Retry if not coprime
+        }
+    }
+
+    /// Helper method to generate a random element in Z/nZ.
+    fn random_element(&self) -> BigUint {
+        let mut rng = OsRng;
+        let bytes = self.n.to_bytes_be();
+        let mut random_bytes = vec![0u8; bytes.len()];
+        rng.fill(&mut random_bytes[..]);
+        let random_num = BigUint::from_bytes_be(&random_bytes);
+        &random_num % &self.n
+    }
+
+    pub fn gcd(a: &BigUint, b: &BigUint) -> BigUint {
+        let mut a = a.clone();
+        let mut b = b.clone();
+
+        while !b.is_zero() {
+            let temp = b.clone();
+            b = &a % &b;
+            a = temp;
+        }
+
+        a
+    }
 }
 
 impl Algebra for IntegerModN {
@@ -124,6 +161,10 @@ impl Group for IntegerModN {
 
 impl fmt::Display for IntegerModN {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Integer Modulo {} (Z/{}Z)", self.n, self.n)
+        write!(
+            f,
+            "Multiplicative Group of Integers Modulo {} (Z/{} Z)",
+            self.n, self.n
+        )
     }
 }

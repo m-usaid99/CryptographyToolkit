@@ -7,6 +7,7 @@ mod polynomial;
 
 use algebra::traits::{Group, Ring};
 use binary_extension_field::BinaryExtensionField;
+use integer_mod_n::IntegerModN;
 use integer_mod_p::IntegerModP;
 use num_bigint::ToBigUint;
 use std::error::Error;
@@ -16,7 +17,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("\n================== Testing Binary Fields GF(2^n) ==================");
     // autogenerate a field based on degree
-    let field = BinaryExtensionField::new_auto(17)?;
+    let field = BinaryExtensionField::new_auto(8)?;
     println!("{}", field);
 
     // Create two field elements
@@ -52,7 +53,27 @@ fn main() -> Result<(), Box<dyn Error>> {
     let f_p = IntegerModP::new(p.to_biguint().unwrap())?;
     println!("Created the prime field: {}", f_p);
 
-    println!("\n");
+    let el0 = f_p.random_element();
+    let el1 = f_p.random_element();
+
+    println!("First random element a: {}", el0);
+    println!("Second random element b: {}", el1);
+
+    let sum = f_p.add(&el0, &el1);
+    println!("Sum: {}", sum);
+
+    let product = f_p.mul(&el0, &el1);
+    println!("Product: {}", product);
+
+    let exp: u128 = 655997;
+    let a_exp = f_p.pow(&el0, exp);
+    println!("a^{}: {}", exp, a_exp);
+
+    println!("\n=========== Testing Group of Integers Mod n (Z/nZ) ============");
+
+    let group = IntegerModN::new((p - 1).to_biguint().unwrap());
+    println!("{}", group);
+
     println!("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     let duration = start.elapsed();
     println!("Time Taken: {:?}", duration);
