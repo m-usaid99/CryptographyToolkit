@@ -12,7 +12,8 @@ use integer_mod_p::IntegerModP;
 use num_bigint::ToBigUint;
 use std::error::Error;
 
-// TODO: - fix the subtraction error in prime fields and possibly in multiplicative group
+// TODO: - fix the subtraction error in multiplicative group
+//       - implement an "in" method to check if element belongs in struct
 
 fn main() -> Result<(), Box<dyn Error>> {
     let start = std::time::Instant::now();
@@ -83,6 +84,32 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let group = IntegerModN::new((p - 1).to_biguint().unwrap());
     println!("{}", group);
+
+    let a = group.random_group_element();
+    let b = group.random_group_element();
+
+    println!("a: {} belonging to {}", a, group);
+    println!("b: {} belonging to {}", b, group);
+
+    let sum = group.add(&a, &b);
+    println!("Sum: {}", sum);
+
+    let product = group.mul(&a, &b);
+    println!("Product: {}", product);
+
+    let exp: u128 = 1123019;
+    let a_exp = group.pow(&a, exp);
+    println!("a^{}: {}", exp, a_exp);
+
+    // Find inverse using the Group trait
+    if let Some(inv_a) = group.inverse(&a) {
+        println!("Inverse of a: {}", inv_a);
+        // Verify that a * inv_a = 1
+        let verification = group.combine(&a, &inv_a);
+        println!("a * inv_a: {}", verification); // Should print the multiplicative identity
+    } else {
+        println!("a has no inverse in the field.");
+    }
 
     println!("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     let duration = start.elapsed();

@@ -1,7 +1,8 @@
 // src/integer_mod_n/integer_mod_n.rs
 
 use crate::algebra::traits::{Algebra, Group, Ring};
-use num_bigint::{BigUint, ToBigUint};
+use num_bigint::{BigInt, BigUint, ToBigInt, ToBigUint};
+use num_integer::Integer; // Import the Integer trait
 use num_traits::{One, Zero};
 use rand::rngs::OsRng;
 use rand::Rng;
@@ -43,20 +44,27 @@ impl IntegerModN {
         if gcd != BigUint::one() {
             return None; // Inverse does not exist
         }
-        Some((x % n) + n)
+
+        // Compute x mod n to ensure the inverse is positive
+        let n_bigint = n.to_bigint().unwrap();
+        let x_mod_n = x.mod_floor(&n_bigint).to_biguint().unwrap();
+        Some(x_mod_n)
     }
 
     /// Extended Euclidean Algorithm.
     /// Returns a tuple of (gcd, x, y) such that ax + by = gcd(a, b)
-    fn extended_gcd(a: &BigUint, b: &BigUint) -> (BigUint, BigUint, BigUint) {
-        let mut old_r = a.clone();
-        let mut r = b.clone();
-        let mut old_s = BigUint::one();
-        let mut s = BigUint::zero();
-        let mut old_t = BigUint::zero();
-        let mut t = BigUint::one();
+    fn extended_gcd(a: &BigUint, b: &BigUint) -> (BigUint, BigInt, BigInt) {
+        let a_bigint = a.to_bigint().unwrap();
+        let b_bigint = b.to_bigint().unwrap();
 
-        while r != BigUint::zero() {
+        let mut old_r = a_bigint.clone();
+        let mut r = b_bigint.clone();
+        let mut old_s = BigInt::one();
+        let mut s = BigInt::zero();
+        let mut old_t = BigInt::zero();
+        let mut t = BigInt::one();
+
+        while !r.is_zero() {
             let quotient = &old_r / &r;
             let temp_r = r.clone();
             r = &old_r - &quotient * &r;
@@ -71,9 +79,11 @@ impl IntegerModN {
             old_t = temp_t;
         }
 
-        (old_r, old_s, old_t)
-    }
+        // Convert gcd back to BigUint
+        let gcd = old_r.to_biguint().unwrap();
 
+        (gcd, old_s, old_t)
+    }
     /// Raises `base` to the power `exp` modulo `n` using exponentiation by squaring.
     pub fn pow(base: &BigUint, exp: u128, n: &BigUint) -> BigUint {
         base.modpow(&exp.to_biguint().unwrap(), n)
@@ -81,7 +91,6 @@ impl IntegerModN {
 
     /// Generates a random element in the multiplicative group (Z/nZ)*.
     pub fn random_group_element(&self) -> BigUint {
-        let rng = OsRng;
         loop {
             let random_num = self.random_element();
             if Self::gcd(&random_num, &self.n) == BigUint::one() {
