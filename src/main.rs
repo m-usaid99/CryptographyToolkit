@@ -5,18 +5,19 @@ mod polynomial;
 use algebra::traits::{Field, Group, Ring};
 use finite_field::FiniteField;
 use finite_field::FiniteFieldError;
-use polynomial::Polynomial;
 
 fn main() -> Result<(), FiniteFieldError> {
     let start = std::time::Instant::now();
     // Define a finite field GF(2^3) with modulus x^3 + x + 1
-    let field = FiniteField::new(3, &[1, 0, 1, 1])?; // Coefficients in big-endian: x^3 + x + 1
+    let field = FiniteField::new_auto(8)?; // Coefficients in big-endian: x^3 + x + 1
     println!("{}", field);
 
     // Create two field elements
-    let a = Polynomial::new(&[1, 0, 1]); // Represents x^2 + 1
-    let b = Polynomial::new(&[1, 1, 0]); // Represents x^2 + x
 
+    let a = field.random_element();
+    let b = field.random_element();
+    println!("a: {}", a);
+    println!("b: {}", b);
     // Perform addition using the Ring trait
     let sum = field.add(&a, &b);
     println!("Sum: {}", sum); // Expected: x + 1
