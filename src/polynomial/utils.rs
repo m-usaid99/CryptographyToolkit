@@ -69,6 +69,11 @@ impl Polynomial {
         Polynomial::new(&[1])
     }
 
+    pub fn zero(n: usize) -> Polynomial {
+        let coeffs = vec![0; n];
+        Polynomial::new(&coeffs)
+    }
+
     /// enumerate all possible monics of a certain degree
     pub fn generate_all_monics(degree: usize) -> Vec<Polynomial> {
         let mut polynomials = Vec::new();

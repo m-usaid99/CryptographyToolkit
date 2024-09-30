@@ -1,6 +1,7 @@
 // src/finite_field/mod.rs
 
-use crate::finite_field::errors::FiniteFieldError;
+use crate::algebra::traits::{Algebra, Field, Group, Ring};
+pub use crate::finite_field::errors::FiniteFieldError;
 use crate::polynomial::Polynomial;
 use rand::Rng;
 use std::fmt;
@@ -140,7 +141,7 @@ impl FiniteField {
     /// # Returns
     ///
     /// The result of \( a^{\text{exp}} \) in the field.
-    pub fn mod_exp(&self, a: &Polynomial, exp: u64) -> Polynomial {
+    pub fn mod_exp(&self, a: &Polynomial, exp: u128) -> Polynomial {
         let one = Polynomial::one();
         let mut result = one.clone();
         let mut base = a.clone();
@@ -206,5 +207,47 @@ impl fmt::Display for FiniteField {
             "Galois field of size 2^{} with modulus {}",
             self.n, self.modulus
         )
+    }
+}
+
+impl Algebra for FiniteField {
+    type Element = Polynomial;
+}
+
+impl Ring for FiniteField {
+    fn add(&self, a: &Self::Element, b: &Self::Element) -> Self::Element {
+        self.add(a, b)
+    }
+
+    fn mul(&self, a: &Self::Element, b: &Self::Element) -> Self::Element {
+        self.multiply(a, b)
+    }
+
+    fn zero(&self) -> Self::Element {
+        Polynomial::zero(self.n)
+    }
+
+    fn one(&self) -> Self::Element {
+        Polynomial::one()
+    }
+}
+
+impl Group for FiniteField {
+    fn combine(&self, a: &Self::Element, b: &Self::Element) -> Self::Element {
+        self.multiply(a, b)
+    }
+
+    fn identity(&self) -> Self::Element {
+        Polynomial::one()
+    }
+
+    fn inverse(&self, a: &Self::Element) -> Option<Self::Element> {
+        self.inverse(a)
+    }
+}
+
+impl Field for FiniteField {
+    fn pow(&self, a: &Self::Element, exp: u128) -> Self::Element {
+        self.mod_exp(a, exp)
     }
 }

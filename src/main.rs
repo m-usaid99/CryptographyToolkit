@@ -1,39 +1,46 @@
+mod algebra;
 mod finite_field;
 mod polynomial;
 
-use cryptography_toolkit::FiniteField;
+use algebra::traits::{Field, Group, Ring};
+use finite_field::FiniteField;
+use finite_field::FiniteFieldError;
+use polynomial::Polynomial;
 
-fn main() {
+fn main() -> Result<(), FiniteFieldError> {
     let start = std::time::Instant::now();
+    // Define a finite field GF(2^3) with modulus x^3 + x + 1
+    let field = FiniteField::new(3, &[1, 0, 1, 1])?; // Coefficients in big-endian: x^3 + x + 1
+    println!("{}", field);
 
-    let field = FiniteField::new_auto(8).expect("Failed to create finite field");
+    // Create two field elements
+    let a = Polynomial::new(&[1, 0, 1]); // Represents x^2 + 1
+    let b = Polynomial::new(&[1, 1, 0]); // Represents x^2 + x
 
-    println!("{} created.", field);
-
-    let a = field.random_element();
-    let b = field.random_element();
-
-    println!("a = {}", a);
-    println!("b = {}", b);
-
+    // Perform addition using the Ring trait
     let sum = field.add(&a, &b);
-    println!("a + b = {}", sum);
+    println!("Sum: {}", sum); // Expected: x + 1
 
-    let product = field.multiply(&a, &b);
-    println!("a * b = {}", product);
+    // Perform multiplication using the Ring trait
+    let product = field.mul(&a, &b);
 
+    println!("Product: {}", product); // Expected: x
+
+    // Find inverse using the Group trait
     if let Some(inv_a) = field.inverse(&a) {
-        println!("Inverse of a = {}", inv_a);
-        let check = field.multiply(&a, &inv_a);
-        println!("a * a^(-1) = {}", check); // Should be 1
+        println!("Inverse of a: {}", inv_a);
+        // Verify that a * inv_a = 1
+        let verification = field.combine(&a, &inv_a);
+        println!("a * inv_a: {}", verification); // Should print the multiplicative identity
     } else {
-        println!("a has no multiplicative inverse.");
+        println!("a has no inverse in the field.");
     }
 
-    for element in field.elements_of_degree(4) {
-        println!("{}", element);
-    }
+    // Perform exponentiation using the Field trait
+    let a_cubed = field.pow(&a, 3);
+    println!("a^3: {}", a_cubed); // Expected: x
 
     let duration = start.elapsed();
     println!("Time Taken: {:?}", duration);
+    Ok(())
 }
