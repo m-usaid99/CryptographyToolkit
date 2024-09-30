@@ -1,7 +1,8 @@
 // src/integer_mod_p/integer_mod_p.rs
 
 use crate::algebra::traits::{Algebra, Field, Group, Ring};
-use num_bigint::{BigUint, ToBigUint};
+use num_bigint::{BigInt, BigUint, ToBigInt, ToBigUint};
+use num_integer::Integer;
 use num_traits::{One, Zero};
 use rand::rngs::OsRng;
 use rand::Rng;
@@ -71,25 +72,41 @@ impl IntegerModP {
     }
 
     /// Computes the multiplicative inverse using the Extended Euclidean Algorithm.
-    fn inverse(a: &BigUint, p: &BigUint) -> Option<BigUint> {
+    pub fn inverse(a: &BigUint, p: &BigUint) -> Option<BigUint> {
         let (gcd, x, _) = Self::extended_gcd(a, p);
         if gcd != BigUint::one() {
             return None; // Inverse does not exist
         }
-        Some((x % p) + p)
+
+        // Compute x mod p to ensure the inverse is positive
+        let p_bigint = p.to_bigint().unwrap();
+        let x_mod_p = x.mod_floor(&p_bigint).to_biguint().unwrap();
+        Some(x_mod_p)
+    }
+
+    /// Subtracts `b` from `a` modulo `p`.
+    pub fn sub(&self, a: &BigUint, b: &BigUint) -> BigUint {
+        if a >= b {
+            (a - b) % &self.p
+        } else {
+            (&self.p + a - b) % &self.p
+        }
     }
 
     /// Extended Euclidean Algorithm.
     /// Returns a tuple of (gcd, x, y) such that ax + by = gcd(a, b)
-    fn extended_gcd(a: &BigUint, b: &BigUint) -> (BigUint, BigUint, BigUint) {
-        let mut old_r = a.clone();
-        let mut r = b.clone();
-        let mut old_s = BigUint::one();
-        let mut s = BigUint::zero();
-        let mut old_t = BigUint::zero();
-        let mut t = BigUint::one();
+    fn extended_gcd(a: &BigUint, b: &BigUint) -> (BigUint, BigInt, BigInt) {
+        let a_bigint = a.to_bigint().unwrap();
+        let b_bigint = b.to_bigint().unwrap();
 
-        while r != BigUint::zero() {
+        let mut old_r = a_bigint.clone();
+        let mut r = b_bigint.clone();
+        let mut old_s = BigInt::one();
+        let mut s = BigInt::zero();
+        let mut old_t = BigInt::zero();
+        let mut t = BigInt::one();
+
+        while !r.is_zero() {
             let quotient = &old_r / &r;
             let temp_r = r.clone();
             r = &old_r - &quotient * &r;
@@ -104,9 +121,11 @@ impl IntegerModP {
             old_t = temp_t;
         }
 
-        (old_r, old_s, old_t)
-    }
+        // Convert gcd back to BigUint
+        let gcd = old_r.to_biguint().unwrap();
 
+        (gcd, old_s, old_t)
+    }
     /// Raises `base` to the power `exp` modulo `p` using exponentiation by squaring.
     fn pow(base: &BigUint, exp: u128, p: &BigUint) -> BigUint {
         base.modpow(&exp.to_biguint().unwrap(), p)

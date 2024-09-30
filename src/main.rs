@@ -12,6 +12,8 @@ use integer_mod_p::IntegerModP;
 use num_bigint::ToBigUint;
 use std::error::Error;
 
+// TODO: - fix the subtraction error in prime fields and possibly in multiplicative group
+
 fn main() -> Result<(), Box<dyn Error>> {
     let start = std::time::Instant::now();
 
@@ -68,6 +70,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     let exp: u128 = 655997;
     let a_exp = f_p.pow(&el0, exp);
     println!("a^{}: {}", exp, a_exp);
+
+    if let Some(inv_a) = f_p.inverse(&el0) {
+        println!("Inverse of a: {}", inv_a);
+        let verification = f_p.combine(&el0, &inv_a);
+        println!("a * inv_a: {}", verification); // Should print the multiplicative identity
+    } else {
+        println!("a has no inverse in this prime field.");
+    }
 
     println!("\n=========== Testing Group of Integers Mod n (Z/nZ) ============");
 

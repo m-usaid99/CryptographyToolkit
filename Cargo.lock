@@ -63,6 +63,7 @@ version = "0.1.0"
 dependencies = [
  "bitvec",
  "num-bigint",
+ "num-integer",
  "num-traits",
  "rand",
  "rayon",
