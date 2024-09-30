@@ -9,7 +9,7 @@ use std::fmt;
 mod errors;
 mod iterators;
 
-pub use errors::*;
+use errors::*;
 pub use iterators::*;
 
 // TODO:    - create a list of known irreducible_polys so that there are ideal polys for common fields

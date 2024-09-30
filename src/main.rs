@@ -1,30 +1,35 @@
 mod algebra;
 mod finite_field;
+mod generic_vector;
+mod integer_mod_p;
 mod polynomial;
 
 use algebra::traits::{Field, Group, Ring};
+use bitvec::ptr::write;
 use finite_field::FiniteField;
-use finite_field::FiniteFieldError;
+use integer_mod_p::IntegerModP;
+use num_bigint::ToBigUint;
+use std::error::Error;
 
-fn main() -> Result<(), FiniteFieldError> {
+fn main() -> Result<(), Box<dyn Error>> {
     let start = std::time::Instant::now();
-    // Define a finite field GF(2^3) with modulus x^3 + x + 1
-    let field = FiniteField::new_auto(8)?; // Coefficients in big-endian: x^3 + x + 1
+
+    // autogenerate a field based on degree
+    let field = FiniteField::new_auto(8)?;
     println!("{}", field);
 
     // Create two field elements
-
     let a = field.random_element();
     let b = field.random_element();
     println!("a: {}", a);
     println!("b: {}", b);
+
     // Perform addition using the Ring trait
     let sum = field.add(&a, &b);
     println!("Sum: {}", sum); // Expected: x + 1
 
     // Perform multiplication using the Ring trait
     let product = field.mul(&a, &b);
-
     println!("Product: {}", product); // Expected: x
 
     // Find inverse using the Group trait
@@ -40,6 +45,10 @@ fn main() -> Result<(), FiniteFieldError> {
     // Perform exponentiation using the Field trait
     let a_cubed = field.pow(&a, 3);
     println!("a^3: {}", a_cubed); // Expected: x
+
+    let p: u128 = 112399138331;
+    let f_p = IntegerModP::new(p.to_biguint().unwrap())?;
+    println!("{}", f_p);
 
     let duration = start.elapsed();
     println!("Time Taken: {:?}", duration);
