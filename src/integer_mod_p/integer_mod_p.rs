@@ -130,6 +130,13 @@ impl IntegerModP {
     fn pow(base: &BigUint, exp: u128, p: &BigUint) -> BigUint {
         base.modpow(&exp.to_biguint().unwrap(), p)
     }
+
+    /// Checks if a given number is an element of Z/pZ.
+    /// Accepts any type that can be converted into a `BigUint`.
+    pub fn contains<T: Into<BigUint>>(&self, num: T) -> bool {
+        let num = num.into();
+        num < self.p
+    }
 }
 
 impl Algebra for IntegerModP {

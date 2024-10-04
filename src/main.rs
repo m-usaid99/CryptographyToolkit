@@ -12,8 +12,7 @@ use integer_mod_p::IntegerModP;
 use num_bigint::ToBigUint;
 use std::error::Error;
 
-// TODO: - fix the subtraction error in multiplicative group
-//       - implement an "in" method to check if element belongs in struct
+// TODO: - implement an "in" method to check if element belongs in struct
 
 fn main() -> Result<(), Box<dyn Error>> {
     let start = std::time::Instant::now();

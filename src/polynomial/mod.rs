@@ -8,12 +8,6 @@ pub mod euclidean;
 pub mod irreducibility;
 pub mod utils;
 
-// Bring submodules into scope
-//use arithmetic::*;
-//use euclidean::*;
-//use irreducibility::*;
-//use utils::*;
-
 /// Represents a polynomial over GF(2) with coefficients in Big-Endian (MSB first) order.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Polynomial {

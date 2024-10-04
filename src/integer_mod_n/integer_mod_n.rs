@@ -122,6 +122,13 @@ impl IntegerModN {
 
         a
     }
+
+    /// Checks if a given number is an element of Z/nZ.
+    /// Accepts any type that can be converted into a `BigUint`.
+    pub fn contains<T: Into<BigUint>>(&self, num: T) -> bool {
+        let num = num.into();
+        num < self.n
+    }
 }
 
 impl Algebra for IntegerModN {
