@@ -1,3 +1,5 @@
+use num_bigint::BigUint;
+
 /// Base trait that defines the associated type `Element`.
 pub trait Algebra {
     type Element;
@@ -30,7 +32,7 @@ pub trait Group: Algebra {
     fn inverse(&self, a: &Self::Element) -> Option<Self::Element>;
 
     /// Raises an element to a non-negative integer power.
-    fn pow(&self, a: &Self::Element, exp: u128) -> Self::Element;
+    fn pow(&self, a: &Self::Element, exp: &BigUint) -> Self::Element;
 }
 
 /// Trait representing a mathematical field.

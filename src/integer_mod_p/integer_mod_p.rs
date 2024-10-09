@@ -27,7 +27,7 @@ impl std::error::Error for IntegerModPError {}
 /// Represents an integer modulo a prime number `p`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IntegerModP {
-    p: BigUint, // Prime modulus
+    pub p: BigUint, // Prime modulus
 }
 
 impl IntegerModP {
@@ -126,8 +126,9 @@ impl IntegerModP {
 
         (gcd, old_s, old_t)
     }
+
     /// Raises `base` to the power `exp` modulo `p` using exponentiation by squaring.
-    fn pow(base: &BigUint, exp: u128, p: &BigUint) -> BigUint {
+    pub fn pow(base: &BigUint, exp: &BigUint, p: &BigUint) -> BigUint {
         base.modpow(&exp.to_biguint().unwrap(), p)
     }
 
@@ -178,8 +179,8 @@ impl Group for IntegerModP {
         }
     }
 
-    fn pow(&self, a: &Self::Element, exp: u128) -> Self::Element {
-        Self::pow(a, exp, &self.p)
+    fn pow(&self, a: &Self::Element, exp: &BigUint) -> Self::Element {
+        a.modpow(exp, &self.p)
     }
 }
 

@@ -1,5 +1,6 @@
 mod algebra;
 mod binary_extension_field;
+mod diffie_hellman;
 mod generic_vector;
 mod integer_mod_n;
 mod integer_mod_p;
@@ -47,7 +48,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // Perform exponentiation using the Field trait
-    let a_cubed = field.pow(&a, 9);
+    let a_cubed = field.pow(&a, field.modulus());
     println!("a^9: {}", a_cubed); // Expected: x
 
     println!("\n================== Testing Prime Fields Z_p ==================");
@@ -68,7 +69,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Product: {}", product);
 
     let exp: u128 = 655997;
-    let a_exp = f_p.pow(&el0, exp);
+    let a_exp = f_p.pow(&el0);
     println!("a^{}: {}", exp, a_exp);
 
     if let Some(inv_a) = f_p.inverse(&el0) {
@@ -97,7 +98,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Product: {}", product);
 
     let exp: u128 = 1123019;
-    let a_exp = group.pow(&a, exp);
+    let a_exp = group.pow(&a);
     println!("a^{}: {}", exp, a_exp);
 
     // Find inverse using the Group trait
