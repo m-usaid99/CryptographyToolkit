@@ -15,7 +15,7 @@ pub struct DiffieHellman {
 
 impl DiffieHellman {
     pub fn new(p: BigUint, g: BigUint) -> Result<Self, Box<dyn Error>> {
-        let field = IntegerModP::new(p)?;
+        let field = IntegerModP::new_valid_prime(p);
         Ok(DiffieHellman { field, g })
     }
 
