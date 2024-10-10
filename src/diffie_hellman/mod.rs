@@ -34,4 +34,9 @@ impl DiffieHellman {
     pub fn compute_public_key(&self, private_key: &BigUint) -> BigUint {
         self.field.pow(&self.g, private_key)
     }
+
+    /// Computes the shared secret: (peer_public)^private mod p
+    pub fn compute_shared_secret(&self, peer_public: &BigUint, private_key: &BigUint) -> BigUint {
+        self.field.pow(peer_public, private_key)
+    }
 }

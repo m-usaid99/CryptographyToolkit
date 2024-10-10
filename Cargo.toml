@@ -12,6 +12,7 @@ target-cpu = "native"
 rayon = "1.5"
 bitvec = "1"
 rand = "0.8.5"
-num-bigint = "0.4.6"
+num-bigint = {version = "0.4.6", features = ["rand"]}
 num-traits = "0.2"
 num-integer="0.1"
+hex = "0.4.3"

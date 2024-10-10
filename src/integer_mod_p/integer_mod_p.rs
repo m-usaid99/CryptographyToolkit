@@ -1,11 +1,11 @@
 // src/integer_mod_p/integer_mod_p.rs
 
 use crate::algebra::traits::{Algebra, Field, Group, Ring};
-use num_bigint::{BigInt, BigUint, ToBigInt, ToBigUint};
+use num_bigint::{BigInt, BigUint, RandBigInt, ToBigInt, ToBigUint};
 use num_integer::Integer;
 use num_traits::{One, Zero};
 use rand::rngs::OsRng;
-use rand::Rng;
+use rand::{self, Rng};
 use std::fmt;
 
 /// Errors related to `IntegerModP`.
@@ -33,10 +33,14 @@ pub struct IntegerModP {
 impl IntegerModP {
     /// Creates a new `IntegerModP` with a given prime modulus `p`.
     pub fn new(p: BigUint) -> Result<Self, IntegerModPError> {
-        if !Self::is_prime(&p) {
+        if !Self::is_prime_miller_rabin(&p, 50) {
             return Err(IntegerModPError::NotPrime);
         }
         Ok(IntegerModP { p })
+    }
+
+    pub fn new_valid_prime(p: BigUint) -> Self {
+        IntegerModP { p }
     }
 
     /// Generates a random element in the field Z/pZ.
@@ -49,25 +53,53 @@ impl IntegerModP {
         &random_num % &self.p
     }
 
-    /// Simple primality check (inefficient for large p).
-    fn is_prime(n: &BigUint) -> bool {
-        if *n < 2.to_biguint().unwrap() {
+    /// Miller-Rabin primality test.
+    /// Returns `true` if `n` is probably prime.
+    /// `k` is the number of testing rounds.
+    fn is_prime_miller_rabin(n: &BigUint, k: u32) -> bool {
+        // Handle base cases
+        if *n < BigUint::from(2u32) {
             return false;
         }
-        if *n == 2.to_biguint().unwrap() || *n == 3.to_biguint().unwrap() {
+        if *n == BigUint::from(2u32) || *n == BigUint::from(3u32) {
             return true;
         }
-        if n % 2.to_biguint().unwrap() == BigUint::zero() {
+        if n % 2u32 == BigUint::zero() {
             return false;
         }
-        let sqrt_n = n.sqrt();
-        let mut i = 3.to_biguint().unwrap();
-        while &i <= &sqrt_n {
-            if n % &i == BigUint::zero() {
-                return false;
-            }
-            i += 2.to_biguint().unwrap();
+
+        // Write n - 1 as 2^s * d
+        let mut d = n - 1u32;
+        let mut s = 0u32;
+        while &d % 2u32 == BigUint::zero() {
+            d /= 2u32;
+            s += 1;
         }
+
+        let mut rng = OsRng;
+
+        'witness_loop: for _ in 0..k {
+            // Choose a random base a in [2, n - 2]
+            let a = rng.gen_biguint_range(&BigUint::from(2u32), &(n - 2u32));
+            let mut x = a.modpow(&d, n);
+
+            if x == BigUint::one() || x == (n - 1u32) {
+                continue;
+            }
+
+            for _ in 0..(s - 1) {
+                x = x.modpow(&BigUint::from(2u32), n);
+
+                if x == (n - 1u32) {
+                    continue 'witness_loop;
+                }
+            }
+
+            // Composite
+            return false;
+        }
+
+        // Probably prime
         true
     }
 
