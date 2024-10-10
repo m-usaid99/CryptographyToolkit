@@ -85,8 +85,8 @@ impl IntegerModN {
         (gcd, old_s, old_t)
     }
     /// Raises `base` to the power `exp` modulo `n` using exponentiation by squaring.
-    pub fn pow(base: &BigUint, exp: u128, n: &BigUint) -> BigUint {
-        base.modpow(&exp.to_biguint().unwrap(), n)
+    pub fn pow(base: &BigUint, exp: &BigUint, n: &BigUint) -> BigUint {
+        base.modpow(&exp, n)
     }
 
     /// Generates a random element in the multiplicative group (Z/nZ)*.
@@ -170,7 +170,7 @@ impl Group for IntegerModN {
         }
     }
 
-    fn pow(&self, a: &Self::Element, exp: u128) -> Self::Element {
+    fn pow(&self, a: &Self::Element, exp: &BigUint) -> Self::Element {
         Self::pow(a, exp, &self.n)
     }
 }

@@ -3,6 +3,8 @@
 use crate::algebra::traits::{Algebra, Field, Group, Ring};
 pub use crate::binary_extension_field::errors::BinaryExtensionFieldError;
 use crate::polynomial::Polynomial;
+use num_bigint::BigUint;
+use num_traits::{One, Zero};
 use rand::Rng;
 use std::fmt;
 
@@ -140,14 +142,14 @@ impl BinaryExtensionField {
     /// # Returns
     ///
     /// The result of \( a^{\text{exp}} \) in the field.
-    pub fn mod_exp(&self, a: &Polynomial, exp: u128) -> Polynomial {
+    pub fn mod_exp(&self, a: &Polynomial, exp: &BigUint) -> Polynomial {
         let one = Polynomial::one();
         let mut result = one.clone();
         let mut base = a.clone();
-        let mut exponent = exp;
+        let mut exponent = exp.clone();
 
-        while exponent > 0 {
-            if exponent & 1 == 1 {
+        while !exponent.is_zero() {
+            if &exponent & BigUint::one() == BigUint::one() {
                 result = self.multiply(&result, &base);
             }
             // Use optimized squaring
@@ -244,7 +246,7 @@ impl Group for BinaryExtensionField {
         self.inverse(a)
     }
 
-    fn pow(&self, a: &Self::Element, exp: u128) -> Self::Element {
+    fn pow(&self, a: &Self::Element, exp: &BigUint) -> Self::Element {
         self.mod_exp(a, exp)
     }
 }
