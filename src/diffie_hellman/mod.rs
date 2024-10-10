@@ -3,7 +3,7 @@
 use crate::algebra::traits::Group;
 use crate::integer_mod_p::IntegerModP;
 use num_bigint::BigUint;
-use num_traits::{One, Zero};
+use num_traits::One;
 use rand::rngs::OsRng;
 use rand::RngCore;
 use std::error::Error;

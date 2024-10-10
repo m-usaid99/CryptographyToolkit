@@ -6,6 +6,7 @@ use num_integer::Integer;
 use num_traits::{One, Zero};
 use rand::rngs::OsRng;
 use rand::{self, Rng};
+use rayon::prelude::*;
 use std::fmt;
 
 /// Errors related to `IntegerModP`.
@@ -33,7 +34,7 @@ pub struct IntegerModP {
 impl IntegerModP {
     /// Creates a new `IntegerModP` with a given prime modulus `p`.
     pub fn new(p: BigUint) -> Result<Self, IntegerModPError> {
-        if !Self::is_prime_miller_rabin(&p, 50) {
+        if !Self::is_prime_miller_rabin_parallel(&p, 50) {
             return Err(IntegerModPError::NotPrime);
         }
         Ok(IntegerModP { p })
@@ -53,10 +54,8 @@ impl IntegerModP {
         &random_num % &self.p
     }
 
-    /// Miller-Rabin primality test.
-    /// Returns `true` if `n` is probably prime.
-    /// `k` is the number of testing rounds.
-    fn is_prime_miller_rabin(n: &BigUint, k: u32) -> bool {
+    // Modify the 'witness_loop' to run in parallel
+    fn is_prime_miller_rabin_parallel(n: &BigUint, k: u32) -> bool {
         // Handle base cases
         if *n < BigUint::from(2u32) {
             return false;
@@ -76,33 +75,35 @@ impl IntegerModP {
             s += 1;
         }
 
-        let mut rng = OsRng;
+        let witnesses: Vec<BigUint> = (0..k)
+            .into_par_iter()
+            .map(|_| {
+                let mut rng = OsRng;
+                rng.gen_biguint_range(&BigUint::from(2u32), &(n - 2u32))
+            })
+            .collect();
 
-        'witness_loop: for _ in 0..k {
-            // Choose a random base a in [2, n - 2]
-            let a = rng.gen_biguint_range(&BigUint::from(2u32), &(n - 2u32));
-            let mut x = a.modpow(&d, n);
-
-            if x == BigUint::one() || x == (n - 1u32) {
-                continue;
-            }
-
-            for _ in 0..(s - 1) {
-                x = x.modpow(&BigUint::from(2u32), n);
-
-                if x == (n - 1u32) {
-                    continue 'witness_loop;
+        // Check each witness in parallel
+        let results: Vec<bool> = witnesses
+            .par_iter()
+            .map(|a| {
+                let mut x = a.modpow(&d, n);
+                if x == BigUint::one() || x == (n - 1u32) {
+                    return true;
                 }
-            }
+                for _ in 0..(s - 1) {
+                    x = x.modpow(&BigUint::from(2u32), n);
+                    if x == (n - 1u32) {
+                        return true;
+                    }
+                }
+                false
+            })
+            .collect();
 
-            // Composite
-            return false;
-        }
-
-        // Probably prime
-        true
+        // If any witness declares composite, return false
+        !results.contains(&false)
     }
-
     /// Computes the multiplicative inverse using the Extended Euclidean Algorithm.
     pub fn inverse(a: &BigUint, p: &BigUint) -> Option<BigUint> {
         let (gcd, x, _) = Self::extended_gcd(a, p);
